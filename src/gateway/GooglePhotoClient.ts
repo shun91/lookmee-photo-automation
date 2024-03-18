@@ -51,9 +51,13 @@ export class GooglePhotoClient {
         }
         const buffer = await response.arrayBuffer();
 
-        const contentType = response.headers.get("content-type");
+        const contentType =
+          response.headers.get("content-type") ?? "image/jpeg";
         if (!contentType) {
-          throw new Error("Failed to determine content type");
+          console.warn(
+            "[WARN] Failed to determine content type:",
+            photo.thumbnail_big_url
+          );
         }
 
         const uploadResponse = await fetchRetry(

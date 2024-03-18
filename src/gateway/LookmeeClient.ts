@@ -4,6 +4,7 @@ type FetchArgs = {
   organizationId: number;
   salesId: number;
   groupId: number;
+  eventId?: number;
   page: number;
 };
 
@@ -56,10 +57,11 @@ export class LookmeeClient {
     organizationId,
     salesId,
     groupId,
+    eventId,
     page,
   }: FetchArgs) {
     const response = await fetchRetry(
-      `https://photo.lookmee.jp/site/api/organizations/${organizationId}/sales_managements/${salesId}/sales_items?group_id=${groupId}&page=${page}`,
+      `https://photo.lookmee.jp/site/api/organizations/${organizationId}/sales_managements/${salesId}/sales_items?group_id=${groupId}&event_id=${eventId}&page=${page}`,
       { headers: { cookie: `_lookmee_photo_session=${this.lookmeeToken}` } }
     );
 

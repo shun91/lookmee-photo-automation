@@ -23,22 +23,22 @@ const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN ?? "";
  * また、以下の値を標準入力から受け取ります。
  * - salesId: LookmeeのsalesId
  * - groupId: LookmeeのgroupId
- * - eventId: LookmeeのeventId（任意：特定のイベントを指定する場合）
+ * - eventIds: LookmeeのeventId。カンマ区切りで複数指定可（任意：特定のイベントを指定する場合）
  * - uploadCount: アップロードする写真の枚数（任意）
  *
  * salesIdとgroupIdは、Lookmee Photoの画面をブラウザで開き、アドレスバーから取得できます。
  *
  * Usage:
- *   node src/usecase/toGooglePhotoFromLookmee.ts [salesId] [groupId] [eventId] [uploadCount]
+ *   node src/usecase/toGooglePhotoFromLookmee.ts [salesId] [groupId] [eventIds] [uploadCount]
  *
  * Example:
- *   node src/usecase/toGooglePhotoFromLookmee.ts 173128 1 6276436 10
+ *   node src/usecase/toGooglePhotoFromLookmee.ts 173128 1 6276436,6276437 10
  */
 const main = async () => {
   // 標準入力からsalesIdとgroupIdとeventIdを受け取る
   const salesId = Number(process.argv[2]);
   const groupId = Number(process.argv[3]);
-  const eventId = process.argv[4] ? Number(process.argv[4]) : undefined;
+  const eventIds = process.argv[4].split(",").map(Number);
   if (!salesId || !groupId) {
     console.error(
       "Usage: node src/usecase/toGooglePhotoFromLookmee.ts [salesId] [groupId] [uploadCount]"
@@ -51,13 +51,15 @@ const main = async () => {
 
   // すべての写真を取得
   const lookmeeClient = new LookmeeClient(lookmeeToken);
-  const photos = await lookmeeClient.fetchAllPhotos({
-    organizationId,
-    salesId,
-    groupId,
-    eventId,
+  const promises = eventIds.map((eventId) => {
+    return lookmeeClient.fetchAllPhotos({
+      organizationId,
+      salesId,
+      groupId,
+      eventId,
+    });
   });
-
+  const photos = (await Promise.all(promises)).flat();
   console.info(`Found ${photos.length} photos`);
 
   // Google Photo にアップロード

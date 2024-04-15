@@ -38,7 +38,9 @@ const main = async () => {
   // 標準入力からsalesIdとgroupIdとeventIdを受け取る
   const salesId = Number(process.argv[2]);
   const groupId = Number(process.argv[3]);
-  const eventIds = process.argv[4].split(",").map(Number);
+  const eventIds = process.argv[4]
+    ? process.argv[4].split(",").map(Number)
+    : [undefined];
   if (!salesId || !groupId) {
     console.error(
       "Usage: node src/usecase/toGooglePhotoFromLookmee.ts [salesId] [groupId] [uploadCount]"

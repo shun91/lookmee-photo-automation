@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "toGooglePhotoFromLookmee": "ts-node src/usecase/toGooglePhotoFromLookmee.ts",
+    "addCart": "ts-node src/usecase/addCart.ts"
+  },
   "devDependencies": {
     "@types/node": "^20.11.19",
     "ts-node": "^10.9.2",

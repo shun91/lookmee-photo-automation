@@ -20,11 +20,11 @@ const main = async () => {
   const oauth2Client = new google.auth.OAuth2(
     CLIENT_ID,
     CLIENT_SECRET,
-    REDIRECT_URI
+    REDIRECT_URI,
   );
 
-  // スコープを設定（必要に応じて変更）
-  const SCOPES = ["https://www.googleapis.com/auth/photoslibrary"];
+  // スコープを設定（2025年4月1日のAPI変更に対応）
+  const SCOPES = ["https://www.googleapis.com/auth/photoslibrary.appendonly"];
 
   // 認証URLを生成
   const authUrl = oauth2Client.generateAuthUrl({
@@ -33,14 +33,31 @@ const main = async () => {
   });
 
   // ユーザーに認証URLを開いてもらい、認証コードを取得
-  console.log("Authorize this app by visiting this url:", authUrl);
+  console.log("以下のURLをブラウザで開いてください:");
+  console.log(authUrl);
+  console.log("\n手順:");
+  console.log("1. ブラウザでURLを開く");
+  console.log("2. Googleアカウントでログインする");
+  console.log(
+    "3. 「このアプリは Google で確認されていません」画面が表示されたら:",
+  );
+  console.log("   a. 左下の「詳細」をクリック");
+  console.log(
+    "   b. 「安全ではないページ」または「(アプリ名)に移動」をクリック",
+  );
+  console.log("4. アクセス許可を与える");
+  console.log("5. リダイレクト後のURLから「code=」の後の値をコピーする");
+  console.log(
+    "   例: http://localhost:8080/?code=4/0AfJohXm...&scope=... の場合、",
+  );
+  console.log("      「4/0AfJohXm...」（&scopeの前まで）をコピー\n");
 
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  rl.question("URL中のcodeパラメータの値を入力してください: ", (code) => {
+  rl.question("コピーした認証コードを貼り付けてください: ", (code) => {
     rl.close();
 
     // 認証コードを使用してアクセストークンを取得

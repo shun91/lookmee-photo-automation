@@ -24,7 +24,10 @@ const main = async () => {
   );
 
   // スコープを設定（2025年4月1日のAPI変更に対応）
-  const SCOPES = ["https://www.googleapis.com/auth/photoslibrary.appendonly"];
+  const SCOPES = [
+    "https://www.googleapis.com/auth/photoslibrary.appendonly",
+    "https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata",
+  ];
 
   // 認証URLを生成
   const authUrl = oauth2Client.generateAuthUrl({

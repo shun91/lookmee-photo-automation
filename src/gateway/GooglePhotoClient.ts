@@ -9,6 +9,35 @@ type ConstructorArgs = {
   refreshToken: string;
 };
 
+// Google Photos Album 型定義
+type Album = {
+  id: string;
+  title: string;
+  productUrl: string;
+  mediaItemsCount: string;
+};
+
+// Google Photos MediaItem 型定義
+type MediaItem = {
+  id: string;
+  productUrl: string;
+  baseUrl: string;
+  mimeType: string;
+  filename: string;
+};
+
+// Albums list レスポンス型定義
+type AlbumsListResponse = {
+  albums: Album[];
+  nextPageToken?: string;
+};
+
+// MediaItems search レスポンス型定義
+type MediaItemsSearchResponse = {
+  mediaItems: MediaItem[];
+  nextPageToken?: string;
+};
+
 /**
  * Google Photos API client
  */
@@ -20,7 +49,7 @@ export class GooglePhotoClient {
     this.oauth2Client = new google.auth.OAuth2(
       args.clientId,
       args.clientSecret,
-      args.redirectUri
+      args.redirectUri,
     );
     this.oauth2Client.setCredentials({
       refresh_token: args.refreshToken,
@@ -56,7 +85,7 @@ export class GooglePhotoClient {
         if (!contentType) {
           console.warn(
             "[WARN] Failed to determine content type:",
-            photo.thumbnail_big_url
+            photo.thumbnail_big_url,
           );
         }
 
@@ -71,17 +100,17 @@ export class GooglePhotoClient {
               "X-Goog-Upload-Protocol": "raw",
             },
             body: buffer,
-          }
+          },
         );
 
         if (!uploadResponse.ok) {
           throw new Error(
-            `Failed to upload image: ${uploadResponse.statusText}`
+            `Failed to upload image: ${uploadResponse.statusText}`,
           );
         }
 
         return await uploadResponse.text();
-      })
+      }),
     );
 
     const batchCreateResponse = await fetch(
@@ -101,12 +130,12 @@ export class GooglePhotoClient {
           })),
           albumId,
         }),
-      }
+      },
     );
 
     if (!batchCreateResponse.ok) {
       throw new Error(
-        `Failed to create media items: ${batchCreateResponse.statusText}`
+        `Failed to create media items: ${batchCreateResponse.statusText}`,
       );
     }
 
@@ -124,7 +153,7 @@ export class GooglePhotoClient {
         console.info(
           `${i / BATCH_SIZE + 1}th Batch upload completed:`,
           response.newMediaItemResults.length,
-          "photos"
+          "photos",
         );
       }
     } catch (error) {
@@ -136,7 +165,7 @@ export class GooglePhotoClient {
     try {
       const accessToken = await this.getAccessToken();
 
-      const response = await fetch(
+      const response = await fetchRetry(
         "https://photoslibrary.googleapis.com/v1/albums",
         {
           method: "POST",
@@ -147,7 +176,7 @@ export class GooglePhotoClient {
           body: JSON.stringify({
             album: { title },
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -158,6 +187,165 @@ export class GooglePhotoClient {
       return albumData;
     } catch (error) {
       console.error("Error creating album:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * アルバム一覧を取得する
+   * @returns アルバムの一覧
+   */
+  async listAlbums(): Promise<Album[]> {
+    try {
+      const accessToken = await this.getAccessToken();
+      let albums: Album[] = [];
+      let nextPageToken: string | undefined = undefined;
+
+      do {
+        const url = new URL("https://photoslibrary.googleapis.com/v1/albums");
+        url.searchParams.append("pageSize", "50");
+
+        // 2025-04-01以降はアプリが作成したアルバムのみが操作対象となるため、
+        // アプリが作成したアルバムのみを表示するパラメータを追加
+        url.searchParams.append("excludeNonAppCreatedData", "true");
+
+        if (nextPageToken) {
+          url.searchParams.append("pageToken", nextPageToken);
+        }
+
+        const response = await fetchRetry(url.toString(), {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to list albums: ${response.statusText}`);
+        }
+
+        const data = (await response.json()) as AlbumsListResponse;
+        albums = albums.concat(data.albums || []);
+        nextPageToken = data.nextPageToken;
+      } while (nextPageToken);
+
+      return albums;
+    } catch (error) {
+      console.error("Error listing albums:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * タイトルからアルバムIDを検索する
+   * @param title アルバムのタイトル
+   * @returns アルバムID（見つからない場合はエラー）
+   */
+  async findAlbumIdByTitle(title: string): Promise<string> {
+    const albums = await this.listAlbums();
+    const album = albums.find((album) => album.title === title);
+
+    if (!album) {
+      throw new Error(`Album not found with title: ${title}`);
+    }
+
+    return album.id;
+  }
+
+  /**
+   * アルバムに含まれるすべてのメディアIDを取得する
+   * @param albumId アルバムID
+   * @returns メディアIDの配列
+   */
+  async fetchAllMediaIds(albumId: string): Promise<string[]> {
+    try {
+      const accessToken = await this.getAccessToken();
+      let mediaIds: string[] = [];
+      let nextPageToken: string | undefined = undefined;
+
+      do {
+        const response = await fetchRetry(
+          "https://photoslibrary.googleapis.com/v1/mediaItems:search",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              albumId,
+              pageSize: 100,
+              ...(nextPageToken && { pageToken: nextPageToken }),
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to search media items: ${response.statusText}`,
+          );
+        }
+
+        const data = (await response.json()) as MediaItemsSearchResponse;
+        const ids = (data.mediaItems || []).map((item) => item.id);
+        mediaIds = mediaIds.concat(ids);
+        nextPageToken = data.nextPageToken;
+
+        console.info(
+          `Fetched ${ids.length} media items from album, total: ${mediaIds.length}`,
+        );
+      } while (nextPageToken);
+
+      return mediaIds;
+    } catch (error) {
+      console.error("Error fetching all media IDs:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * 既存のメディアをアルバムにバッチ追加する
+   * @param mediaItemIds 追加するメディアID配列
+   * @param albumId 追加先アルバムID
+   */
+  async batchAddMediaItems(
+    mediaItemIds: string[],
+    albumId: string,
+  ): Promise<void> {
+    if (mediaItemIds.length === 0) {
+      console.info("No media items to add");
+      return;
+    }
+
+    try {
+      const accessToken = await this.getAccessToken();
+      const BATCH_SIZE = 50; // 1回のAPIコールで最大50件まで
+
+      for (let i = 0; i < mediaItemIds.length; i += BATCH_SIZE) {
+        const batch = mediaItemIds.slice(i, i + BATCH_SIZE);
+        const response = await fetchRetry(
+          `https://photoslibrary.googleapis.com/v1/albums/${albumId}:batchAddMediaItems`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              mediaItemIds: batch,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to add media items: ${response.statusText}`);
+        }
+
+        console.info(
+          `Added batch ${Math.floor(i / BATCH_SIZE) + 1}, ${batch.length} items`,
+        );
+      }
+    } catch (error) {
+      console.error("Error adding media items to album:", error);
       throw error;
     }
   }

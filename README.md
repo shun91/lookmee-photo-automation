@@ -49,6 +49,37 @@ LOOKMEE_ORGANIZATION_ID
 
 toGooglePhotoFromLookmee.ts を実行します。詳細はソースコード内の説明を確認してください。
 
+```bash
+# コマンド例: yarn toGooglePhotoFromLookmee [salesId] [groupId] [eventIds] [uploadCount]
+yarn toGooglePhotoFromLookmee 173128 1 6276436,6276437 10
+```
+
 ### Lookmee のカートへの追加
 
 addCart.ts を実行します。詳細はソースコード内の説明を確認してください。
+
+```bash
+# コマンド例: yarn addCart [salesId] [photoIds]
+yarn addCart 173128 1,2,3
+```
+
+### アルバム差分の作成
+
+2つのGoogleフォトアルバムの差分を新しいアルバムに追加します。「アルバムAに含まれる、かつアルバムBに含まれないメディアアイテム」のみを対象とします。
+
+```bash
+# コマンド例: yarn makeDiffAlbum "アルバムAのタイトル" "アルバムBのタイトル"
+yarn makeDiffAlbum "2024年度運動会写真" "購入済み写真"
+```
+
+※出力アルバムは毎回新規作成され、タイトルは「アルバムA - diff (日付 時刻)」の形式で自動生成されます。
+
+#### makeDiffAlbumの特徴
+
+- 毎回新しいアルバム作成：日時を含むタイトルで自動的に新規アルバムを作成
+- 50件ずつのバッチ処理：APIの制限内で効率的に処理
+- ページネーション完全対応：どんな枚数のアルバムでも対応
+- アプリ作成アルバム対応：2025-04-01以降のGoogle APIスコープ変更に準拠
+- エラーハンドリング：5xx/429エラーに対する自動リトライ機能
+
+この機能を利用して、Lookmeeからアップロードした写真と既に購入した写真の差分を抽出し、未購入写真だけを表示するなどの使い方ができます。

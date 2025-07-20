@@ -5,7 +5,8 @@
   "license": "MIT",
   "scripts": {
     "toGooglePhotoFromLookmee": "tsx src/usecase/toGooglePhotoFromLookmee.ts",
-    "addCart": "tsx src/usecase/addCart.ts"
+    "addCart": "tsx src/usecase/addCart.ts",
+    "makeDiffAlbum": "tsx src/usecase/makeDiffAlbum.ts"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",

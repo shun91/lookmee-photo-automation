@@ -7,6 +7,9 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? "";
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN ?? "";
 
+// 環境変数から除外アルバムのデフォルト値を取得
+const DEFAULT_EXCLUDE_ALBUM = process.env.DEFAULT_EXCLUDE_ALBUM ?? "";
+
 /**
  * アルバムAとアルバムBの差分を新規アルバムに追加する
  *
@@ -15,23 +18,34 @@ const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN ?? "";
  *
  * 使用方法:
  * ```
- * yarn makeDiffAlbum "<アルバムAのタイトル>" "<アルバムBのタイトル>"
+ * yarn makeDiffAlbum "<アルバムAのタイトル>" ["<アルバムBのタイトル>"]
  * ```
  *
  * 環境変数に以下の値を設定しておく必要があります:
- * - GOOGLE_CLINET_ID
- * - GOOGLE_CLIENT_SECRET
- * - GOOGLE_REDIRECT_URI
- * - GOOGLE_REFRESH_TOKEN
+ * - GOOGLE_CLINET_ID: Google Photo API クライアントID
+ * - GOOGLE_CLIENT_SECRET: Google Photo API クライアントシークレット
+ * - GOOGLE_REDIRECT_URI: Google Photo API リダイレクトURI
+ * - GOOGLE_REFRESH_TOKEN: Google Photo API リフレッシュトークン
+ * - DEFAULT_EXCLUDE_ALBUM (任意): アルバムBのデフォルト値
  */
 const main = async () => {
   try {
     // 引数解析
-    const [titleA, titleB] = process.argv.slice(2);
+    const [titleA, titleBArg] = process.argv.slice(2);
 
-    if (!titleA || !titleB) {
+    // アルバムA（ソース）は必須
+    if (!titleA) {
       console.error(
-        'Usage: tsx src/usecase/makeDiffAlbum.ts "<Album A title>" "<Album B title>"',
+        'Usage: tsx src/usecase/makeDiffAlbum.ts "<Album A title>" ["<Album B title>"]',
+      );
+      process.exit(1);
+    }
+
+    // アルバムB（除外）は引数かデフォルト値から取得
+    const titleB = titleBArg || DEFAULT_EXCLUDE_ALBUM;
+    if (!titleB) {
+      console.error(
+        "Album B title is required. Either provide it as an argument or set the DEFAULT_EXCLUDE_ALBUM environment variable.",
       );
       process.exit(1);
     }
@@ -57,7 +71,9 @@ const main = async () => {
 
     console.info("Starting makeDiffAlbum process");
     console.info(`Source album: "${titleA}"`);
-    console.info(`Exclude album: "${titleB}"`);
+    console.info(
+      `Exclude album: "${titleB}" ${titleBArg ? "" : "(from environment variable)"}`,
+    );
     console.info(`Output album will be created as: "${outputTitle}"`);
 
     // GooglePhotoClient 初期化

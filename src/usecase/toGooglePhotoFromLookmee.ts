@@ -43,7 +43,7 @@ const main = async () => {
     : [undefined];
   if (!salesId || !groupId) {
     console.error(
-      "Usage: node src/usecase/toGooglePhotoFromLookmee.ts [salesId] [groupId] [uploadCount]"
+      "Usage: node src/usecase/toGooglePhotoFromLookmee.ts [salesId] [groupId] [uploadCount]",
     );
     process.exit(1);
   }
@@ -71,12 +71,16 @@ const main = async () => {
     redirectUri: REDIRECT_URI,
     refreshToken: REFRESH_TOKEN,
   });
-  // アルバム作成
-  const { id } = await googlePhotoClient.createAlbum("lookmee");
+  // アルバム作成（lookmee-{yyyymm}-{groupId}の形式で作成）
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);
+  const yyyymm = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
+  const albumName = `lookmee-${yyyymm}-${groupId}`;
+  const { id } = await googlePhotoClient.createAlbum(albumName);
   // アップロード
   googlePhotoClient.batchCreateAll(
     photos.slice(0, isNaN(uploadCount) ? photos.length : uploadCount),
-    id
+    id,
   );
 };
 

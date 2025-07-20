@@ -31,7 +31,7 @@ const main = async () => {
 
     if (!titleA || !titleB) {
       console.error(
-        'Usage: ts-node src/usecase/makeDiffAlbum.ts "<Album A title>" "<Album B title>"',
+        'Usage: tsx src/usecase/makeDiffAlbum.ts "<Album A title>" "<Album B title>"',
       );
       process.exit(1);
     }

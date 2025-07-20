@@ -45,6 +45,11 @@ export class GooglePhotoClient {
   private oauth2Client: Auth.OAuth2Client;
   private accessToken: string | undefined;
 
+  // アルバムリストのキャッシュ
+  private albumsCache: Album[] | null = null;
+  private albumsCacheTime: number = 0;
+  private readonly CACHE_TTL = 60 * 1000; // キャッシュの有効期限: 60秒
+
   constructor(args: ConstructorArgs) {
     this.oauth2Client = new google.auth.OAuth2(
       args.clientId,
@@ -184,6 +189,10 @@ export class GooglePhotoClient {
       }
 
       const albumData = await response.json();
+
+      // 新しいアルバムを作成したらキャッシュを無効化
+      this.invalidateAlbumsCache();
+
       return albumData;
     } catch (error) {
       console.error("Error creating album:", error);
@@ -192,11 +201,36 @@ export class GooglePhotoClient {
   }
 
   /**
-   * アルバム一覧を取得する
+   * アルバムキャッシュを無効化する
+   */
+  private invalidateAlbumsCache(): void {
+    this.albumsCache = null;
+    this.albumsCacheTime = 0;
+  }
+
+  /**
+   * キャッシュが有効かどうかを判定する
+   * @returns キャッシュが有効な場合はtrue、そうでない場合はfalse
+   */
+  private isAlbumsCacheValid(): boolean {
+    return (
+      !!this.albumsCache && Date.now() - this.albumsCacheTime < this.CACHE_TTL
+    );
+  }
+
+  /**
+   * アルバム一覧を取得する（キャッシュ対応）
    * @returns アルバムの一覧
    */
   async listAlbums(): Promise<Album[]> {
+    // キャッシュが有効であれば、キャッシュから返す
+    if (this.isAlbumsCacheValid()) {
+      console.info("Using cached album list");
+      return this.albumsCache!;
+    }
+
     try {
+      console.info("Fetching album list from API");
       const accessToken = await this.getAccessToken();
       let albums: Album[] = [];
       let nextPageToken: string | undefined = undefined;
@@ -227,6 +261,11 @@ export class GooglePhotoClient {
         albums = albums.concat(data.albums || []);
         nextPageToken = data.nextPageToken;
       } while (nextPageToken);
+
+      // 取得したアルバムリストをキャッシュに保存
+      this.albumsCache = albums;
+      this.albumsCacheTime = Date.now();
+      console.info(`Cached ${albums.length} albums`);
 
       return albums;
     } catch (error) {
@@ -341,7 +380,9 @@ export class GooglePhotoClient {
         }
 
         console.info(
-          `Added batch ${Math.floor(i / BATCH_SIZE) + 1}, ${batch.length} items`,
+          `Added batch ${Math.floor(i / BATCH_SIZE) + 1}, ${
+            batch.length
+          } items`,
         );
       }
     } catch (error) {

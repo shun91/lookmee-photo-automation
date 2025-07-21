@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 async function getLookmeeCookie() {
   // ブラウザを起動
   const browser = await chromium.launch({
-    headless: false, // ブラウザを表示する（デバッグ用、本番環境ではtrueにする）
+    headless: true,
   });
 
   try {

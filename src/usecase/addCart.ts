@@ -1,14 +1,13 @@
 import { LookmeeClient } from "../gateway/LookmeeClient";
 
-const lookmeeToken = process.env.LOOKMEE_TOKEN ?? "";
 const organizationId = Number(process.env.LOOKMEE_ORGANIZATION_ID);
 
 /**
  * カートに写真を追加する
  *
  * 事前に環境変数に以下の値を設定しておく必要があります。
- * - LOOKMEE_TOKEN
  * - LOOKMEE_ORGANIZATION_ID
+ * - LOOKMEE_EMAIL と LOOKMEE_PASSWORD （LOOKMEE_TOKEN が未設定の場合）
  *
  * また、以下の値を標準入力から受け取ります。
  * - salesId: LookmeeのsalesId
@@ -29,15 +28,15 @@ const main = async () => {
     process.exit(1);
   }
 
-  const lookmeeClient = new LookmeeClient(lookmeeToken);
+  const lookmeeClient = new LookmeeClient();
   const result = await Promise.all(
     photoIds.map((photoId) =>
       lookmeeClient.addCart({
         organizationId,
         salesId,
         photoId: photoId,
-      })
-    )
+      }),
+    ),
   );
 
   console.info(result);

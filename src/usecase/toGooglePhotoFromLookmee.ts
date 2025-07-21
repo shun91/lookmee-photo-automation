@@ -1,7 +1,6 @@
 import { LookmeeClient } from "../gateway/LookmeeClient";
 import { GooglePhotoClient } from "../gateway/GooglePhotoClient";
 
-const lookmeeToken = process.env.LOOKMEE_TOKEN ?? "";
 const organizationId = Number(process.env.LOOKMEE_ORGANIZATION_ID);
 
 const CLIENT_ID = process.env.GOOGLE_CLINET_ID ?? "";
@@ -13,8 +12,8 @@ const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN ?? "";
  * Lookmee API から写真を取得し、Google Photo にアップロードする
  *
  * 事前に環境変数に以下の値を設定しておく必要があります。
- * - LOOKMEE_TOKEN
  * - LOOKMEE_ORGANIZATION_ID
+ * - LOOKMEE_EMAIL と LOOKMEE_PASSWORD （LOOKMEE_TOKEN が未設定の場合）
  * - GOOGLE_CLINET_ID
  * - GOOGLE_CLIENT_SECRET
  * - GOOGLE_REDIRECT_URI
@@ -52,7 +51,7 @@ const main = async () => {
   const uploadCount = Number(process.argv[5]);
 
   // すべての写真を取得
-  const lookmeeClient = new LookmeeClient(lookmeeToken);
+  const lookmeeClient = new LookmeeClient();
   const promises = eventIds.map((eventId) => {
     return lookmeeClient.fetchAllPhotos({
       organizationId,

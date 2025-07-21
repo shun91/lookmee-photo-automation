@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "toGooglePhotoFromLookmee": "tsx src/usecase/toGooglePhotoFromLookmee.ts",
+    "batchToGooglePhotoFromLookmee": "tsx src/usecase/batchToGooglePhotoFromLookmee.ts",
     "addCart": "tsx src/usecase/addCart.ts",
     "makeDiffAlbum": "tsx src/usecase/makeDiffAlbum.ts"
   },

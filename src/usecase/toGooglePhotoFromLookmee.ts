@@ -1,5 +1,5 @@
 import { LookmeeClient } from "../gateway/LookmeeClient";
-import { GooglePhotoClient } from "../gateway/GooglePhotoClient";
+import { GooglePhotoClientImpl } from "../gateway/GooglePhotoClient";
 
 const organizationId = Number(process.env.LOOKMEE_ORGANIZATION_ID);
 
@@ -64,7 +64,7 @@ const main = async () => {
   console.info(`Found ${photos.length} photos`);
 
   // Google Photo にアップロード
-  const googlePhotoClient = new GooglePhotoClient({
+  const googlePhotoClient = new GooglePhotoClientImpl({
     clientId: CLIENT_ID,
     clientSecret: CLIENT_SECRET,
     redirectUri: REDIRECT_URI,

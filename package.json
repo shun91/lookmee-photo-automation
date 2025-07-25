@@ -1,13 +1,15 @@
 {
   "name": "lookmee-photo-automation",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "license": "MIT",
   "scripts": {
     "toGooglePhotoFromLookmee": "tsx src/usecase/toGooglePhotoFromLookmee.ts",
     "batchToGooglePhotoFromLookmee": "tsx src/usecase/batchToGooglePhotoFromLookmee.ts",
     "addCart": "tsx src/usecase/addCart.ts",
-    "makeDiffAlbum": "tsx src/usecase/makeDiffAlbum.ts"
+    "makeDiffAlbum": "tsx src/usecase/makeDiffAlbum.ts",
+    "test": "tsx --test src/**/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",

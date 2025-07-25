@@ -39,9 +39,19 @@ type MediaItemsSearchResponse = {
 };
 
 /**
- * Google Photos API client
+ * Google Photos API client interface
  */
-export class GooglePhotoClient {
+export interface GooglePhotoClient {
+  findAlbumIdByTitle(title: string): Promise<string>;
+  fetchAllMediaIds(albumId: string): Promise<string[]>;
+  createAlbum(title: string): Promise<{ id: string }>;
+  batchAddMediaItems(mediaIds: string[], albumId: string): Promise<void>;
+}
+
+/**
+ * Google Photos API client implementation
+ */
+export class GooglePhotoClientImpl implements GooglePhotoClient {
   private oauth2Client: Auth.OAuth2Client;
   private accessToken: string | undefined;
 

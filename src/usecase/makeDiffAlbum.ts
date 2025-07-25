@@ -1,4 +1,7 @@
-import { GooglePhotoClient } from "../gateway/GooglePhotoClient";
+import {
+  GooglePhotoClient,
+  GooglePhotoClientImpl,
+} from "../gateway/GooglePhotoClient";
 
 /**
  * 配列の差集合を計算する純粋関数
@@ -18,8 +21,8 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? "";
 const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN ?? "";
 
-// 環境変数から除外アルバムのデフォルト値を取得
-const DEFAULT_EXCLUDE_ALBUM = process.env.DEFAULT_EXCLUDE_ALBUM ?? "";
+// 環境変数から除外アルバムのデフォルト値を取得する関数（テスト時の動的な変更に対応）
+const getDefaultExcludeAlbum = () => process.env.DEFAULT_EXCLUDE_ALBUM ?? "";
 
 /**
  * アルバムAとアルバムBの差分を新規アルバムに追加する
@@ -39,26 +42,23 @@ const DEFAULT_EXCLUDE_ALBUM = process.env.DEFAULT_EXCLUDE_ALBUM ?? "";
  * - GOOGLE_REFRESH_TOKEN: Google Photo API リフレッシュトークン
  * - DEFAULT_EXCLUDE_ALBUM (任意): アルバムBのデフォルト値
  */
-const main = async () => {
+export const makeDiffAlbum = async (
+  titleA: string,
+  titleB: string | undefined,
+  clientInstance: GooglePhotoClient,
+) => {
   try {
-    // 引数解析
-    const [titleA, titleBArg] = process.argv.slice(2);
-
     // アルバムA（ソース）は必須
     if (!titleA) {
-      console.error(
-        'Usage: tsx src/usecase/makeDiffAlbum.ts "<Album A title>" ["<Album B title>"]',
-      );
-      process.exit(1);
+      throw new Error("Album A title is required");
     }
 
     // アルバムB（除外）は引数かデフォルト値から取得
-    const titleB = titleBArg || DEFAULT_EXCLUDE_ALBUM;
-    if (!titleB) {
-      console.error(
+    const finalTitleB = titleB || getDefaultExcludeAlbum();
+    if (!finalTitleB) {
+      throw new Error(
         "Album B title is required. Either provide it as an argument or set the DEFAULT_EXCLUDE_ALBUM environment variable.",
       );
-      process.exit(1);
     }
 
     // 現在の日時を含むアルバム名を生成
@@ -72,45 +72,31 @@ const main = async () => {
       .replace(":", "-");
     const outputTitle = `${titleA} - diff (${dateStr} ${timeStr})`;
 
-    // 必要な環境変数が設定されているかチェック
-    if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI || !REFRESH_TOKEN) {
-      console.error(
-        "Required environment variables are not set. Please set GOOGLE_CLINET_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, and GOOGLE_REFRESH_TOKEN.",
-      );
-      process.exit(1);
-    }
-
     console.info("Starting makeDiffAlbum process");
     console.info(`Source album: "${titleA}"`);
     console.info(
-      `Exclude album: "${titleB}" ${titleBArg ? "" : "(from environment variable)"}`,
+      `Exclude album: "${finalTitleB}" ${
+        titleB ? "" : "(from environment variable)"
+      }`,
     );
     console.info(`Output album will be created as: "${outputTitle}"`);
-
-    // GooglePhotoClient 初期化
-    const client = new GooglePhotoClient({
-      clientId: CLIENT_ID,
-      clientSecret: CLIENT_SECRET,
-      redirectUri: REDIRECT_URI,
-      refreshToken: REFRESH_TOKEN,
-    });
 
     console.info("Resolving album IDs...");
 
     // アルバムID解決
-    const albumIdA = await client.findAlbumIdByTitle(titleA);
+    const albumIdA = await clientInstance.findAlbumIdByTitle(titleA);
     console.info(`Found album A: "${titleA}" (ID: ${albumIdA})`);
 
-    const albumIdB = await client.findAlbumIdByTitle(titleB);
-    console.info(`Found album B: "${titleB}" (ID: ${albumIdB})`);
+    const albumIdB = await clientInstance.findAlbumIdByTitle(finalTitleB);
+    console.info(`Found album B: "${finalTitleB}" (ID: ${albumIdB})`);
 
     // メディアID一覧取得
     console.info(`Fetching media items from album A: "${titleA}"...`);
-    const sourceIds = await client.fetchAllMediaIds(albumIdA);
+    const sourceIds = await clientInstance.fetchAllMediaIds(albumIdA);
     console.info(`Found ${sourceIds.length} media items in album A`);
 
-    console.info(`Fetching media items from album B: "${titleB}"...`);
-    const excludeIds = await client.fetchAllMediaIds(albumIdB);
+    console.info(`Fetching media items from album B: "${finalTitleB}"...`);
+    const excludeIds = await clientInstance.fetchAllMediaIds(albumIdB);
     console.info(`Found ${excludeIds.length} media items in album B`);
 
     // 差集合計算
@@ -121,31 +107,75 @@ const main = async () => {
       console.info(
         "No items to add. All items in album A are already in album B.",
       );
-      process.exit(0);
+      return {
+        sourceAlbum: titleA,
+        excludeAlbum: finalTitleB,
+        outputAlbum: outputTitle,
+        sourceCount: sourceIds.length,
+        excludeCount: excludeIds.length,
+        addedCount: 0,
+      };
     }
 
     // 新しいアルバムを作成
     console.info(`Creating new album: "${outputTitle}"`);
-    const album = await client.createAlbum(outputTitle);
+    const album = await clientInstance.createAlbum(outputTitle);
     const albumIdC = album.id;
     console.info(`Created album: "${outputTitle}" (ID: ${albumIdC})`);
 
     // batchAddMediaItems (50件ずつ)
     console.info(`Adding ${addIds.length} items to the new album...`);
-    await client.batchAddMediaItems(addIds, albumIdC);
+    await clientInstance.batchAddMediaItems(addIds, albumIdC);
 
     // 統計出力
     console.info("----- Summary -----");
     console.info(`Source album: ${titleA} (${sourceIds.length} items)`);
-    console.info(`Exclude album: ${titleB} (${excludeIds.length} items)`);
+    console.info(`Exclude album: ${finalTitleB} (${excludeIds.length} items)`);
     console.info(`Target album: ${outputTitle}`);
     console.info(`Items in difference set (A - B): ${addIds.length}`);
     console.info(`Total items added to new album: ${addIds.length}`);
     console.info("Process completed successfully");
+
+    return {
+      sourceAlbum: titleA,
+      excludeAlbum: finalTitleB,
+      outputAlbum: outputTitle,
+      sourceCount: sourceIds.length,
+      excludeCount: excludeIds.length,
+      addedCount: addIds.length,
+    };
   } catch (error) {
     console.error("Error executing makeDiffAlbum:", error);
+    throw error;
+  }
+};
+
+const main = async () => {
+  const [titleA, titleBArg] = process.argv.slice(2);
+
+  if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI || !REFRESH_TOKEN) {
+    console.error(
+      "Required environment variables are not set. Please set GOOGLE_CLINET_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, and GOOGLE_REFRESH_TOKEN.",
+    );
+    process.exit(1);
+  }
+
+  const client = new GooglePhotoClientImpl({
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    redirectUri: REDIRECT_URI,
+    refreshToken: REFRESH_TOKEN,
+  });
+
+  try {
+    await makeDiffAlbum(titleA, titleBArg, client);
+  } catch (error) {
+    console.error("Error:", error);
     process.exit(1);
   }
 };
 
-main();
+// 直接実行された場合のみmain関数を実行（他のファイルからインポートされた場合は実行しない）
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}

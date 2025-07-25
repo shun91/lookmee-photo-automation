@@ -46,6 +46,7 @@ export interface GooglePhotoClient {
   fetchAllMediaIds(albumId: string): Promise<string[]>;
   createAlbum(title: string): Promise<{ id: string }>;
   batchAddMediaItems(mediaIds: string[], albumId: string): Promise<void>;
+  batchCreateAll(photos: Photo[], albumId: string): Promise<void>;
 }
 
 /**

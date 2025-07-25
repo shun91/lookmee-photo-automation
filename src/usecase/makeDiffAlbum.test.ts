@@ -19,6 +19,7 @@ describe("makeDiffAlbum", () => {
     const mockBatchAddMediaItems = mock.fn(
       async (_mediaIds: string[], _albumId: string) => {},
     );
+    const mockBatchCreateAll = mock.fn(async () => {});
     const mockClient = {
       findAlbumIdByTitle: async (title: string) => {
         if (title === "Album A") return "album-a-id";
@@ -32,6 +33,7 @@ describe("makeDiffAlbum", () => {
       },
       createAlbum: mockCreateAlbum,
       batchAddMediaItems: mockBatchAddMediaItems,
+      batchCreateAll: mockBatchCreateAll,
     } satisfies GooglePhotoClient;
 
     const result = await makeDiffAlbum("Album A", "Album B", mockClient);
@@ -66,6 +68,7 @@ describe("makeDiffAlbum", () => {
     const mockBatchAddMediaItems = mock.fn(
       async (_mediaIds: string[], _albumId: string) => {},
     );
+    const mockBatchCreateAll = mock.fn(async () => {});
     const mockClient = {
       findAlbumIdByTitle: async (title: string) => {
         if (title === "Album A") return "album-a-id";
@@ -79,6 +82,7 @@ describe("makeDiffAlbum", () => {
       },
       createAlbum: mockCreateAlbum,
       batchAddMediaItems: mockBatchAddMediaItems,
+      batchCreateAll: mockBatchCreateAll,
     } satisfies GooglePhotoClient;
 
     const result = await makeDiffAlbum("Album A", "Album B", mockClient);
@@ -116,6 +120,7 @@ describe("makeDiffAlbum", () => {
       fetchAllMediaIds: async () => [],
       createAlbum: async () => ({ id: "new-album-id" }),
       batchAddMediaItems: async () => {},
+      batchCreateAll: async () => {},
     } satisfies GooglePhotoClient;
 
     await assert.rejects(
@@ -136,6 +141,7 @@ describe("makeDiffAlbum", () => {
     const mockBatchAddMediaItems = mock.fn(
       async (_mediaIds: string[], _albumId: string) => {},
     );
+    const mockBatchCreateAll = mock.fn(async () => {});
     const mockClient = {
       findAlbumIdByTitle: async (title: string) => {
         if (title === "Album A") return "album-a-id";
@@ -149,6 +155,7 @@ describe("makeDiffAlbum", () => {
       },
       createAlbum: mockCreateAlbum,
       batchAddMediaItems: mockBatchAddMediaItems,
+      batchCreateAll: mockBatchCreateAll,
     } satisfies GooglePhotoClient;
 
     const result = await makeDiffAlbum("Album A", undefined, mockClient);
@@ -177,6 +184,7 @@ describe("makeDiffAlbum", () => {
     const mockBatchAddMediaItems = mock.fn(
       async (_mediaIds: string[], _albumId: string) => {},
     );
+    const mockBatchCreateAll = mock.fn(async () => {});
     const mockClient = {
       findAlbumIdByTitle: async () => {
         throw new Error("Album not found"); // エラーを発生させる
@@ -184,6 +192,7 @@ describe("makeDiffAlbum", () => {
       fetchAllMediaIds: async () => [],
       createAlbum: mockCreateAlbum,
       batchAddMediaItems: mockBatchAddMediaItems,
+      batchCreateAll: mockBatchCreateAll,
     } satisfies GooglePhotoClient;
 
     // テスト実行

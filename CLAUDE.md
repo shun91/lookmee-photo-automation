@@ -34,7 +34,7 @@ LOOKMEE_PASSWORD
 ts-node src/usecase/genGoogleRefreshToken.ts
 ```
 
-#### Lookmeeのセッションクッキー取得
+#### Lookmee のセッションクッキー取得
 
 ```bash
 ts-node src/getLookmeeCookie.ts
@@ -91,7 +91,7 @@ Google Photos API にアクセスするためのクライアント。
 
 #### 3. ユースケース
 
-主に2つの機能を提供：
+主に 2 つの機能を提供：
 
 - Lookmee Photo から Google Photo へ写真をアップロード
 - Lookmee Photo のカートに写真を追加
@@ -99,17 +99,171 @@ Google Photos API にアクセスするためのクライアント。
 #### 4. 認証ヘルパー
 
 - Google API のリフレッシュトークン取得
-- Lookmee のセッションクッキー取得（Playwright使用）
+- Lookmee のセッションクッキー取得（Playwright 使用）
 
 ### データフロー
 
-1. **Lookmeeから写真を取得**：
-   - LookmeeClient を使用してAPI経由で写真データを取得
+1. **Lookmee から写真を取得**：
+
+   - LookmeeClient を使用して API 経由で写真データを取得
    - organizationId、salesId、groupId、eventId などのパラメータで写真を特定
 
-2. **Google Photoへのアップロード**：
-   - GooglePhotoClient を使用して新しいアルバムを作成
-   - バッチ処理（最大50枚/バッチ）で写真をアップロード
+2. **Google Photo へのアップロード**：
 
-3. **Lookmeeのカートへ追加**：
-   - 指定された写真IDを使用してカートへ追加
+   - GooglePhotoClient を使用して新しいアルバムを作成
+   - バッチ処理（最大 50 枚/バッチ）で写真をアップロード
+
+3. **Lookmee のカートへ追加**：
+   - 指定された写真 ID を使用してカートへ追加
+
+## テスト戦略とルール
+
+**重要**：リファクタリングへの耐性を優先して、実装の詳細ではなく外部からのふるまいをテストする。
+
+### テストフレームワーク
+
+- **Node.js 組み込みテスト**: `node:test`、`node:assert`、`node:mock` を使用
+- **実行方法**: `npm test`
+
+### テストファイルの構造
+
+```typescript
+import { test, describe, beforeEach, afterEach, mock } from "node:test";
+import { strict as assert } from "node:assert";
+```
+
+#### 推奨ディレクトリ構造
+
+- テストファイルは実装ファイルと同じディレクトリに置く
+
+### テストパターン
+
+#### 1. 正常系テスト
+
+- **命名**: `"正常系: [期待される動作の説明]"`
+- **検証対象**: 戻り値、副作用（メソッド呼び出し）、状態変更
+- **例**: `"正常系: アルバムAとアルバムBの差分を新しいアルバムに追加"`
+
+#### 2. 異常系テスト
+
+- **命名**: `"異常系: [エラー条件の説明]"`
+- **検証対象**: エラーの発生、エラーメッセージ、副作用なし
+- **使用関数**: `assert.rejects()` で Promise のエラーを検証
+
+#### 3. 境界値テスト
+
+- **検証対象**: 空配列、0 件、最大値、最小値
+- **例**: `"差分が0の場合: 新しいアルバムを作成せずに終了"`
+
+#### 4. 環境変数テスト
+
+- **環境変数の管理**: `beforeEach`/`afterEach` で保存/復元
+- **テスト実行時の環境変数操作**: `process.env.VARIABLE_NAME = "value"`
+
+### モック戦略
+
+#### 外部依存の完全モック化
+
+```typescript
+const mockClient = {
+  findAlbumIdByTitle: async (title: string) => {
+    /* モック実装 */
+  },
+  fetchAllMediaIds: async (albumId: string) => {
+    /* モック実装 */
+  },
+  createAlbum: mockCreateAlbum,
+  batchAddMediaItems: mockBatchAddMediaItems,
+} satisfies GooglePhotoClient;
+```
+
+#### モック関数の作成
+
+```typescript
+const mockCreateAlbum = mock.fn(async () => ({ id: "new-album-id" }));
+```
+
+#### モック呼び出しの検証
+
+```typescript
+// 呼び出し回数の検証
+assert.equal(mockCreateAlbum.mock.callCount(), 1);
+
+// 引数の検証
+const firstCall = mockBatchAddMediaItems.mock.calls[0];
+assert.deepEqual(firstCall.arguments[0], ["photo1", "photo3"]);
+```
+
+### アサーション戦略
+
+#### 戻り値の検証
+
+```typescript
+assert.equal(result.sourceAlbum, "Album A");
+assert.equal(result.addedCount, 2);
+assert.match(
+  result.outputAlbum,
+  /^Album A - diff \(\d{4}-\d{1,2}-\d{1,2} \d{1,2}-\d{1,2}\)$/,
+);
+```
+
+#### エラーの検証
+
+```typescript
+await assert.rejects(
+  async () => {
+    await makeDiffAlbum("", "Album B", mockClient);
+  },
+  { message: "Album A title is required" },
+);
+```
+
+### テストデータ設計
+
+#### 独立性の確保
+
+- 各テストは独立して実行可能
+- テスト間でのデータ共有は避ける
+- 予測可能な固定値を使用
+
+#### テストデータの例
+
+```typescript
+const testData = {
+  albumA: { id: "album-a-id", photos: ["photo1", "photo2", "photo3"] },
+  albumB: { id: "album-b-id", photos: ["photo2"] },
+  expected: { diff: ["photo1", "photo3"], count: 2 },
+};
+```
+
+### 環境変数管理
+
+#### テスト前後の環境変数保存・復元
+
+```typescript
+const originalEnv = process.env.DEFAULT_EXCLUDE_ALBUM;
+beforeEach(() => {
+  process.env.DEFAULT_EXCLUDE_ALBUM = originalEnv;
+});
+afterEach(() => {
+  process.env.DEFAULT_EXCLUDE_ALBUM = originalEnv;
+});
+```
+
+### テスト実行時の注意点
+
+- 環境変数が正しく設定されているか確認
+- 外部依存（API）の状態を考慮
+- テストの並列実行への対応
+
+### TDD（テスト駆動開発）の進め方
+
+1. **Red**: 失敗するテストを書く
+2. **Green**: テストを通す最小限のコードを書く
+3. **Refactor**: コードを改善する（テストは維持）
+
+#### t-wada さんの TDD アプローチ
+
+- 小さな単位でのテスト作成
+- 段階的な機能追加
+- リファクタリングを重視

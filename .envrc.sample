@@ -3,4 +3,10 @@ export GOOGLE_CLIENT_SECRET=""
 export GOOGLE_REDIRECT_URI="http://localhost:8080"
 export GOOGLE_REFRESH_TOKEN=""
 
-export LOOKMEE_TOKEN=""
+export LOOKMEE_EMAIL=""
+export LOOKMEE_PASSWORD=""
+# export LOOKMEE_TOKEN=""
+# export LOOKMEE_ORGANIZATION_ID=
+# export LOOKMEE_GROUP_IDS=""
+
+# export DEFAULT_EXCLUDE_ALBUM=""

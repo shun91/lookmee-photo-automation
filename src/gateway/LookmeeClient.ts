@@ -37,9 +37,17 @@ type ItemsResponse = {
 };
 
 /**
- * Lookmee API クライアント
+ * Lookmee API client interface
  */
-export class LookmeeClient {
+export interface LookmeeClient {
+  fetchAllPhotos(args: FetchAllArgs): Promise<Photo[]>;
+  addCart(args: AddCartArgs): Promise<any>;
+}
+
+/**
+ * Lookmee API クライアント実装
+ */
+export class LookmeeClientImpl implements LookmeeClient {
   /**
    * Lookmee API トークン
    */

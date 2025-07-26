@@ -1,4 +1,4 @@
-import { LookmeeClient } from "../gateway/LookmeeClient";
+import { LookmeeClient, LookmeeClientImpl } from "../gateway/LookmeeClient";
 import {
   GooglePhotoClient,
   GooglePhotoClientImpl,
@@ -125,7 +125,7 @@ const main = async () => {
     refreshToken: REFRESH_TOKEN,
   });
 
-  const lookmeeClient = new LookmeeClient();
+  const lookmeeClient = new LookmeeClientImpl();
 
   try {
     await toGooglePhotoFromLookmee(

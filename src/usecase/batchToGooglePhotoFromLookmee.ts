@@ -1,5 +1,8 @@
 import { spawn } from "child_process";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * 複数のgroupIdに対してtoGooglePhotoFromLookmeeを実行する

@@ -81,7 +81,7 @@ describe("toGooglePhotoFromLookmee", () => {
       12345,
       67890,
       [1, 2],
-      undefined,
+      "",
       mockGooglePhotoClient,
       mockLookmeeClient,
     );
@@ -111,7 +111,7 @@ describe("toGooglePhotoFromLookmee", () => {
       12345,
       67890,
       [1, 2],
-      2,
+      "2",
       mockGooglePhotoClient,
       mockLookmeeClient,
     );
@@ -129,7 +129,7 @@ describe("toGooglePhotoFromLookmee", () => {
       12345,
       67890,
       [undefined],
-      undefined,
+      "",
       mockGooglePhotoClient,
       mockLookmeeClient,
     );
@@ -145,14 +145,16 @@ describe("toGooglePhotoFromLookmee", () => {
     const now = new Date();
     const mockDate = new Date(now.getTime());
     mockDate.setMonth(mockDate.getMonth() - 1);
-    const expectedYyyyMm = `${mockDate.getFullYear()}${String(mockDate.getMonth() + 1).padStart(2, "0")}`;
+    const expectedYyyyMm = `${mockDate.getFullYear()}${String(
+      mockDate.getMonth() + 1,
+    ).padStart(2, "0")}`;
     const expectedAlbumName = `lookmee-${expectedYyyyMm}-67890`;
 
     const result = await toGooglePhotoFromLookmee(
       12345,
       67890,
       [1],
-      undefined,
+      "",
       mockGooglePhotoClient,
       mockLookmeeClient,
     );
@@ -167,7 +169,7 @@ describe("toGooglePhotoFromLookmee", () => {
           0,
           67890,
           [1],
-          undefined,
+          "",
           mockGooglePhotoClient,
           mockLookmeeClient,
         );
@@ -183,7 +185,7 @@ describe("toGooglePhotoFromLookmee", () => {
           12345,
           0,
           [1],
-          undefined,
+          "",
           mockGooglePhotoClient,
           mockLookmeeClient,
         );
@@ -205,7 +207,7 @@ describe("toGooglePhotoFromLookmee", () => {
           12345,
           67890,
           [1],
-          undefined,
+          "",
           mockGooglePhotoClient,
           mockErrorLookmeeClient,
         );
@@ -228,7 +230,7 @@ describe("toGooglePhotoFromLookmee", () => {
           12345,
           67890,
           [1],
-          undefined,
+          "",
           mockErrorGooglePhotoClient,
           mockLookmeeClient,
         );
@@ -242,7 +244,7 @@ describe("toGooglePhotoFromLookmee", () => {
       12345,
       67890,
       [],
-      undefined,
+      "",
       mockGooglePhotoClient,
       mockLookmeeClient,
     );
@@ -257,7 +259,7 @@ describe("toGooglePhotoFromLookmee", () => {
       12345,
       67890,
       [1],
-      0,
+      "0",
       mockGooglePhotoClient,
       mockLookmeeClient,
     );
@@ -278,7 +280,7 @@ describe("toGooglePhotoFromLookmee", () => {
       12345,
       67890,
       [1],
-      undefined,
+      "",
       mockGooglePhotoClient,
       mockEmptyLookmeeClient,
     );

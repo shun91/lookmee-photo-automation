@@ -25,7 +25,7 @@ export const toGooglePhotoFromLookmee = async (
   salesId: number,
   groupId: number,
   eventIds: (number | undefined)[],
-  uploadCount: number | undefined,
+  uploadCount: string,
   googlePhotoClient: GooglePhotoClient,
   lookmeeClient: LookmeeClient,
 ) => {
@@ -49,14 +49,19 @@ export const toGooglePhotoFromLookmee = async (
   // アルバム作成（lookmee-{yyyymm}-{groupId}の形式で作成）
   const date = new Date();
   date.setMonth(date.getMonth() - 1);
-  const yyyymm = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
+  const yyyymm = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(
+    2,
+    "0",
+  )}`;
   const albumName = `lookmee-${yyyymm}-${groupId}`;
   const { id } = await googlePhotoClient.createAlbum(albumName);
 
   // アップロード
   const targetPhotos = photos.slice(
     0,
-    uploadCount !== undefined ? uploadCount : photos.length,
+    uploadCount !== undefined && uploadCount !== ""
+      ? Number(uploadCount)
+      : photos.length,
   );
   await googlePhotoClient.batchCreateAll(targetPhotos, id);
 
@@ -108,7 +113,7 @@ const main = async () => {
   }
 
   // 標準入力からアップロードする枚数を受け取る。主に動作確認用（任意）
-  const uploadCount = Number(process.argv[5]);
+  const uploadCount = process.argv[5];
 
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI || !REFRESH_TOKEN) {
     console.error(

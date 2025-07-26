@@ -104,12 +104,10 @@ Google Photos API にアクセスするためのクライアント。
 ### データフロー
 
 1. **Lookmee から写真を取得**：
-
    - LookmeeClient を使用して API 経由で写真データを取得
    - organizationId、salesId、groupId、eventId などのパラメータで写真を特定
 
 2. **Google Photo へのアップロード**：
-
    - GooglePhotoClient を使用して新しいアルバムを作成
    - バッチ処理（最大 50 枚/バッチ）で写真をアップロード
 
@@ -267,3 +265,259 @@ afterEach(() => {
 - 小さな単位でのテスト作成
 - 段階的な機能追加
 - リファクタリングを重視
+
+## コーディングルール
+
+### 基本方針
+
+- **TypeScript**: 型安全性を重視し、`any`型の使用を避ける
+- **関数型プログラミング**: 可能な限り純粋関数を使用し、副作用を最小限に抑える
+- **エラーハンドリング**: 適切なエラーハンドリングを実装し、ユーザーフレンドリーなエラーメッセージを提供する
+
+### 命名規則
+
+#### 変数・関数
+
+- **camelCase**: 変数名と関数名は camelCase を使用
+- **意味のある名前**: 略語は避け、目的が明確な名前を使用
+- **動詞＋名詞**: 関数名は動作を表す動詞で始める
+
+```typescript
+// 良い例
+const userPhotoCount = 10;
+const fetchUserPhotos = async (userId: string) => { ... };
+
+// 悪い例
+const cnt = 10;
+const getData = async (id: string) => { ... };
+```
+
+#### クラス・型
+
+- **PascalCase**: クラス名、インターフェース、型は PascalCase を使用
+- **接頭辞**: インターフェースには `I` を付けない（TypeScript の慣習に従う）
+
+```typescript
+// 良い例
+interface PhotoData {
+  id: string;
+  url: string;
+}
+
+class GooglePhotoClient {
+  // ...
+}
+
+// 悪い例
+interface IPhotoData {
+  id: string;
+  url: string;
+}
+```
+
+#### 定数
+
+- **UPPER_SNAKE_CASE**: 定数は UPPER_SNAKE_CASE を使用
+
+```typescript
+const MAX_BATCH_SIZE = 50;
+const API_BASE_URL = "https://api.example.com";
+```
+
+### ファイル構造
+
+#### import 文の順序
+
+1. Node.js 組み込みモジュール
+2. 外部ライブラリ
+3. 内部モジュール（相対パス順）
+
+```typescript
+// 1. Node.js 組み込みモジュール
+import { readFileSync } from "fs";
+import { join } from "path";
+
+// 2. 外部ライブラリ
+import axios from "axios";
+
+// 3. 内部モジュール
+import { GooglePhotoClient } from "./GooglePhotoClient";
+import { LookmeeClient } from "./LookmeeClient";
+```
+
+#### export 文
+
+- **named export**: 原則として named export を使用
+- **default export**: 単一の主要なクラスやオブジェクトの場合のみ使用
+
+```typescript
+// 良い例
+export class GooglePhotoClient {
+  // ...
+}
+
+export const MAX_BATCH_SIZE = 50;
+
+// 単一の主要なクラスの場合
+export default class LookmeeClient {
+  // ...
+}
+```
+
+### コード品質
+
+#### 関数設計
+
+- **単一責任の原則**: 関数は一つの責任のみを持つ
+- **引数の数**: 引数は 3 個以下に抑える。それ以上の場合はオブジェクトを使用
+- **戻り値**: 戻り値の型を明示的に指定
+
+```typescript
+// 良い例
+interface UploadOptions {
+  albumTitle: string;
+  maxCount: number;
+  tags: string[];
+}
+
+const uploadPhotos = async (
+  photos: Photo[],
+  options: UploadOptions,
+): Promise<UploadResult> => {
+  // ...
+};
+
+// 悪い例
+const uploadPhotos = async (
+  photos: Photo[],
+  albumTitle: string,
+  maxCount: number,
+  tags: string[],
+) => {
+  // ...
+};
+```
+
+#### エラーハンドリング
+
+- **型安全なエラー**: カスタムエラークラスを使用
+- **適切なログ**: エラーの詳細情報をログに記録
+- **ユーザーフレンドリー**: ユーザーに分かりやすいエラーメッセージを提供
+
+```typescript
+class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public details?: any,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+const handleApiError = (error: unknown): never => {
+  if (error instanceof ApiError) {
+    console.error(
+      `API Error [${error.statusCode}]: ${error.message}`,
+      error.details,
+    );
+    throw new Error(`API呼び出しに失敗しました: ${error.message}`);
+  }
+
+  console.error("Unexpected error:", error);
+  throw new Error("予期しないエラーが発生しました");
+};
+```
+
+#### 非同期処理
+
+- **async/await**: Promise チェーンよりも async/await を使用
+- **エラーハンドリング**: try-catch を適切に使用
+- **並列処理**: 独立した処理は Promise.all() を使用
+
+```typescript
+// 良い例
+const processPhotos = async (photoIds: string[]): Promise<void> => {
+  try {
+    const photos = await Promise.all(photoIds.map((id) => fetchPhoto(id)));
+
+    await uploadPhotos(photos);
+  } catch (error) {
+    handleApiError(error);
+  }
+};
+
+// 悪い例
+const processPhotos = (photoIds: string[]) => {
+  return Promise.all(photoIds.map((id) => fetchPhoto(id)))
+    .then((photos) => uploadPhotos(photos))
+    .catch((error) => {
+      throw error;
+    });
+};
+```
+
+### パフォーマンス
+
+#### バッチ処理
+
+- **適切なバッチサイズ**: API制限に応じたバッチサイズを設定
+- **レート制限**: 必要に応じてレート制限を実装
+
+```typescript
+const BATCH_SIZE = 50;
+const RATE_LIMIT_DELAY = 1000; // 1秒
+
+const processBatch = async <T>(
+  items: T[],
+  processor: (batch: T[]) => Promise<void>,
+): Promise<void> => {
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE);
+    await processor(batch);
+
+    if (i + BATCH_SIZE < items.length) {
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY));
+    }
+  }
+};
+```
+
+#### メモリ使用量
+
+- **ストリーミング**: 大きなファイルはストリーミング処理を使用
+- **適切なクリーンアップ**: 不要なオブジェクトは適切にクリーンアップ
+
+### セキュリティ
+
+#### 機密情報の取り扱い
+
+- **環境変数**: 機密情報は環境変数で管理
+- **ログ出力**: 機密情報をログに出力しない
+
+```typescript
+// 良い例
+const token = process.env.LOOKMEE_TOKEN;
+if (!token) {
+  throw new Error("LOOKMEE_TOKEN environment variable is required");
+}
+
+// 悪い例
+const token = "hardcoded-token";
+console.log(`Using token: ${token}`);
+```
+
+#### 入力検証
+
+- **型チェック**: TypeScript の型システムを活用
+- **バリデーション**: 外部入力は適切にバリデーション
+
+```typescript
+const validatePhotoId = (id: unknown): string => {
+  if (typeof id !== "string" || id.trim().length === 0) {
+    throw new Error("Photo ID must be a non-empty string");
+  }
+  return id.trim();
+};
+```

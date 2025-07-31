@@ -5,7 +5,7 @@ const getOrganizationId = () => Number(process.env.LOOKMEE_ORGANIZATION_ID);
 
 export interface AddCartParams {
   organizationId: number;
-  salesId: number;
+  salesId?: number;
   photoIds: number[];
 }
 
@@ -27,17 +27,27 @@ export const addCart = async (
   params: AddCartParams,
   clientInstance: LookmeeClient,
 ): Promise<AddCartResult> => {
-  const { organizationId, salesId, photoIds } = params;
+  const { organizationId, photoIds } = params;
+  let { salesId } = params;
 
-  if (!organizationId || !salesId || !photoIds.length) {
-    throw new Error("organizationId, salesId, and photoIds are required");
+  if (!organizationId || !photoIds.length) {
+    throw new Error("organizationId and photoIds are required");
+  }
+
+  // salesIdが未指定の場合は自動取得
+  if (!salesId) {
+    salesId = await clientInstance.getSalesId();
+  }
+
+  if (!salesId) {
+    throw new Error("salesId could not be determined");
   }
 
   const results = await Promise.all(
     photoIds.map((photoId) =>
       clientInstance.addCart({
         organizationId,
-        salesId,
+        salesId: salesId!, // この時点でsalesIdは必ず数値
         photoId,
       }),
     ),
@@ -59,21 +69,34 @@ export const addCart = async (
  * - LOOKMEE_EMAIL と LOOKMEE_PASSWORD （LOOKMEE_TOKEN が未設定の場合）
  *
  * また、以下の値を標準入力から受け取ります。
- * - salesId: LookmeeのsalesId
  * - photoIds: カートに追加する写真のID（カンマ区切り）
+ * - salesId（任意）: LookmeeのsalesId（未指定の場合は自動取得）
  *
  * Usage:
- *  node src/usecase/addCart.ts [salesId] [photoIds]
+ *  node src/usecase/addCart.ts [photoIds] [salesId]
+ *  node src/usecase/addCart.ts [photoIds]
  *
  * Example:
- *   node src/usecase/addCart.ts 173128 1,2,3
+ *   node src/usecase/addCart.ts 1,2,3
+ *   node src/usecase/addCart.ts 1,2,3 173128
  */
 const main = async () => {
-  // 標準入力からsalesIdとphotoIdを受け取る
-  const salesId = Number(process.argv[2]);
-  const photoIds = process.argv[3].split(",").map(Number);
-  if (!salesId || !photoIds.length) {
-    console.error("Usage: node src/usecase/addCart.ts [salesId] [photoIds]");
+  // 第1引数: photoIds、第2引数: salesId（任意）
+  const photoIdsArg = process.argv[2];
+  const salesIdArg = process.argv[3];
+
+  if (!photoIdsArg) {
+    console.error("Usage: node src/usecase/addCart.ts [photoIds] [salesId]");
+    console.error("Example: node src/usecase/addCart.ts 1,2,3");
+    console.error("Example: node src/usecase/addCart.ts 1,2,3 173128");
+    process.exit(1);
+  }
+
+  const photoIds = photoIdsArg.split(",").map(Number);
+  const salesId = salesIdArg ? Number(salesIdArg) : undefined;
+
+  if (!photoIds.length) {
+    console.error("photoIds are required");
     process.exit(1);
   }
 

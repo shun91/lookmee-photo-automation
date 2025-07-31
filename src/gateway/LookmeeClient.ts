@@ -1,5 +1,5 @@
 import { fetchRetry } from "./fetchRetry";
-import { getLookmeeToken } from "./getLookmeeToken";
+import { getLookmeeAuth, LookmeeAuthResult } from "./getLookmeeAuth";
 
 type FetchArgs = {
   organizationId: number;
@@ -42,6 +42,7 @@ type ItemsResponse = {
 export interface LookmeeClient {
   fetchAllPhotos(args: FetchAllArgs): Promise<Photo[]>;
   addCart(args: AddCartArgs): Promise<any>;
+  getSalesId(): Promise<number>;
 }
 
 /**
@@ -49,45 +50,49 @@ export interface LookmeeClient {
  */
 export class LookmeeClientImpl implements LookmeeClient {
   /**
-   * Lookmee API トークン
+   * Lookmee API トークンとsalesId
    */
-  private lookmeeToken: string | null = null;
-  private tokenPromise: Promise<string> | null = null;
+  private lookmeeAuthResult: LookmeeAuthResult | null = null;
+  private authPromise: Promise<LookmeeAuthResult> | null = null;
 
   /**
    * @param lookmeeToken トークンを明示的に指定する場合（指定しない場合は自動的に取得）
+   * @param salesId salesIdを明示的に指定する場合（指定しない場合は自動的に取得）
    */
-  constructor(lookmeeToken?: string) {
-    if (lookmeeToken) {
-      this.lookmeeToken = lookmeeToken;
+  constructor(lookmeeToken?: string, salesId?: string) {
+    if (lookmeeToken && salesId) {
+      this.lookmeeAuthResult = {
+        lookmeeToken,
+        salesId,
+      };
     }
   }
 
   /**
-   * Lookmeeトークンを取得する
+   * Lookmee認証情報（トークンとsalesId）を取得する
    * キャッシュがあればそれを返し、なければ新たに取得する
    *
-   * @returns Lookmee APIトークン
+   * @returns Lookmee APIトークンとsalesId
    */
-  private async getToken(): Promise<string> {
-    // トークンが明示的に指定されている場合はそれを返す
-    if (this.lookmeeToken) {
-      return this.lookmeeToken;
+  private async getAuthResult(): Promise<LookmeeAuthResult> {
+    // 認証情報が明示的に指定されている場合はそれを返す
+    if (this.lookmeeAuthResult) {
+      return this.lookmeeAuthResult;
     }
 
-    // トークン取得中の場合は同じPromiseを返す（重複リクエスト防止）
-    if (this.tokenPromise) {
-      return this.tokenPromise;
+    // 認証情報取得中の場合は同じPromiseを返す（重複リクエスト防止）
+    if (this.authPromise) {
+      return this.authPromise;
     }
 
-    // トークンを取得
-    this.tokenPromise = getLookmeeToken();
+    // 認証情報を取得
+    this.authPromise = getLookmeeAuth();
     try {
-      this.lookmeeToken = await this.tokenPromise;
-      return this.lookmeeToken;
+      this.lookmeeAuthResult = await this.authPromise;
+      return this.lookmeeAuthResult;
     } finally {
       // リクエスト完了後にPromiseをクリア
-      this.tokenPromise = null;
+      this.authPromise = null;
     }
   }
 
@@ -98,7 +103,28 @@ export class LookmeeClientImpl implements LookmeeClient {
    * @returns Lookmee APIトークン
    */
   async getTokenForTest(): Promise<string> {
-    return this.getToken();
+    const authResult = await this.getAuthResult();
+    return authResult.lookmeeToken;
+  }
+
+  /**
+   * SalesIdを取得する
+   *
+   * @returns salesId（数値）
+   */
+  async getSalesId(): Promise<number> {
+    const authResult = await this.getAuthResult();
+    return Number(authResult.salesId);
+  }
+
+  /**
+   * テスト用: Lookmee認証情報（トークンとsalesId）を取得する
+   * このメソッドは公開APIのため、テスト目的でのみ使用すること
+   *
+   * @returns Lookmee APIトークンとsalesId
+   */
+  async getAuthResultForTest(): Promise<LookmeeAuthResult> {
+    return this.getAuthResult();
   }
 
   /**
@@ -113,7 +139,8 @@ export class LookmeeClientImpl implements LookmeeClient {
     eventId,
     page,
   }: FetchArgs) {
-    const token = await this.getToken();
+    const authResult = await this.getAuthResult();
+    const token = authResult.lookmeeToken;
     const response = await fetchRetry(
       `https://photo.lookmee.jp/site/api/organizations/${organizationId}/sales_managements/${salesId}/sales_items?group_id=${groupId}&event_id=${eventId}&page=${page}`,
       { headers: { cookie: `_lookmee_photo_session=${token}` } },
@@ -146,7 +173,8 @@ export class LookmeeClientImpl implements LookmeeClient {
   }
 
   async addCart({ organizationId, salesId, photoId }: AddCartArgs) {
-    const token = await this.getToken();
+    const authResult = await this.getAuthResult();
+    const token = authResult.lookmeeToken;
     const response = await fetchRetry(
       `https://photo.lookmee.jp/site/api/organizations/${organizationId}/sales_managements/${salesId}/cart/pictures`,
       {

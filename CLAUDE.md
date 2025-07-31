@@ -34,26 +34,31 @@ LOOKMEE_PASSWORD
 ts-node src/usecase/genGoogleRefreshToken.ts
 ```
 
-#### Lookmee のセッションクッキー取得
+#### Lookmee の認証情報（セッションクッキーとsalesId）取得
 
 ```bash
-ts-node src/getLookmeeCookie.ts
+ts-node src/gateway/getLookmeeAuth.ts
 ```
 
 #### Lookmee から Google Photo にアップロード
 
 ```bash
-# コマンド例: ts-node src/usecase/toGooglePhotoFromLookmee.ts [salesId] [groupId] [eventIds] [uploadCount]
-ts-node src/usecase/toGooglePhotoFromLookmee.ts 173128 1 6276436,6276437 10
-npm run toGooglePhotoFromLookmee -- 173128 1 6276436,6276437 10
+# コマンド例: ts-node src/usecase/toGooglePhotoFromLookmee.ts [groupId] [eventIds] [uploadCount] [salesId]
+# salesIdは任意（未指定の場合は自動取得）
+ts-node src/usecase/toGooglePhotoFromLookmee.ts 1 6276436,6276437 10
+ts-node src/usecase/toGooglePhotoFromLookmee.ts 1 6276436,6276437 10 173128
+npm run toGooglePhotoFromLookmee -- 1 6276436,6276437 10
+npm run toGooglePhotoFromLookmee -- 1 6276436,6276437 10 173128
 ```
 
 #### Lookmee のカートに写真を追加
 
 ```bash
-# コマンド例: ts-node src/usecase/addCart.ts [salesId] [photoIds]
-ts-node src/usecase/addCart.ts 173128 1,2,3
-npm run addCart -- 173128 1,2,3
+# コマンド例: ts-node src/usecase/addCart.ts [photoIds] [salesId]
+ts-node src/usecase/addCart.ts 1,2,3
+ts-node src/usecase/addCart.ts 1,2,3 173128
+npm run addCart -- 1,2,3
+npm run addCart -- 1,2,3 173128
 ```
 
 ## コードアーキテクチャ
@@ -99,17 +104,15 @@ Google Photos API にアクセスするためのクライアント。
 #### 4. 認証ヘルパー
 
 - Google API のリフレッシュトークン取得
-- Lookmee のセッションクッキー取得（Playwright 使用）
+- Lookmee の認証情報（セッションクッキーとsalesId）取得（Playwright 使用）
 
 ### データフロー
 
 1. **Lookmee から写真を取得**：
-
    - LookmeeClient を使用して API 経由で写真データを取得
    - organizationId、salesId、groupId、eventId などのパラメータで写真を特定
 
 2. **Google Photo へのアップロード**：
-
    - GooglePhotoClient を使用して新しいアルバムを作成
    - バッチ処理（最大 50 枚/バッチ）で写真をアップロード
 

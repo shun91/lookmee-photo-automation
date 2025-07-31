@@ -113,6 +113,12 @@ const main = async () => {
       lookmeeClient,
     );
     console.info(result);
+
+    // カート画面のURLを表示
+    console.info("\nカート画面を開いて購入を完了してください。");
+    console.info(
+      `https://photo.lookmee.jp/site/organizations/${organizationId}/sales_managements/${result.salesId}/cart`,
+    );
   } catch (error) {
     console.error("Error:", error);
     process.exit(1);

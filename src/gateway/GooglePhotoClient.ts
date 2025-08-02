@@ -387,7 +387,18 @@ export class GooglePhotoClientImpl implements GooglePhotoClient {
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to add media items: ${response.statusText}`);
+          let errorDetails = response.statusText;
+          try {
+            const errorBody = await response.json();
+            errorDetails = JSON.stringify(errorBody, null, 2);
+          } catch {
+            try {
+              errorDetails = await response.text();
+            } catch {
+              // フォールバック: statusTextを使用
+            }
+          }
+          throw new Error(`Failed to add media items: ${errorDetails}`);
         }
 
         console.info(

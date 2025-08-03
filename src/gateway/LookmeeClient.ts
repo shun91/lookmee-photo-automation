@@ -9,8 +9,6 @@ type FetchArgs = {
   page: number;
 };
 
-type FetchAllArgs = Omit<FetchArgs, "page">;
-
 type AddCartArgs = {
   organizationId: number;
   salesId: number;
@@ -40,9 +38,10 @@ type ItemsResponse = {
  * Lookmee API client interface
  */
 export interface LookmeeClient {
-  fetchAllPhotos(args: FetchAllArgs): Promise<Photo[]>;
-  addCart(args: AddCartArgs): Promise<any>;
+  fetchAllPhotos(args: { groupId: number; eventId?: number }): Promise<Photo[]>;
+  addCart(photoIds: number[]): Promise<any[]>;
   getSalesId(): Promise<number>;
+  getOrganizationId(): Promise<number>;
 }
 
 /**
@@ -54,12 +53,21 @@ export class LookmeeClientImpl implements LookmeeClient {
    */
   private lookmeeAuthResult: LookmeeAuthResult | null = null;
   private authPromise: Promise<LookmeeAuthResult> | null = null;
+  private organizationId: number;
 
   /**
    * @param lookmeeToken トークンを明示的に指定する場合（指定しない場合は自動的に取得）
    * @param salesId salesIdを明示的に指定する場合（指定しない場合は自動的に取得）
    */
   constructor(lookmeeToken?: string, salesId?: string) {
+    // organizationIdを環境変数から取得
+    this.organizationId = Number(process.env.LOOKMEE_ORGANIZATION_ID);
+    if (!this.organizationId) {
+      throw new Error(
+        "LOOKMEE_ORGANIZATION_ID environment variable is required",
+      );
+    }
+
     if (lookmeeToken && salesId) {
       this.lookmeeAuthResult = {
         lookmeeToken,
@@ -118,6 +126,15 @@ export class LookmeeClientImpl implements LookmeeClient {
   }
 
   /**
+   * OrganizationIdを取得する
+   *
+   * @returns organizationId（数値）
+   */
+  async getOrganizationId(): Promise<number> {
+    return this.organizationId;
+  }
+
+  /**
    * テスト用: Lookmee認証情報（トークンとsalesId）を取得する
    * このメソッドは公開APIのため、テスト目的でのみ使用すること
    *
@@ -160,19 +177,60 @@ export class LookmeeClientImpl implements LookmeeClient {
    *
    * @returns 写真のURLとファイル番号の配列
    */
-  async fetchAllPhotos(args: FetchAllArgs) {
-    const items = await this.fetchItems({ ...args, page: 1 });
+  async fetchAllPhotos({
+    groupId,
+    eventId,
+  }: {
+    groupId: number;
+    eventId?: number;
+  }) {
+    // 内部で認証情報を取得
+    const authResult = await this.getAuthResult();
+    const salesId = Number(authResult.salesId);
+
+    const items = await this.fetchItems({
+      organizationId: this.organizationId,
+      salesId,
+      groupId,
+      eventId,
+      page: 1,
+    });
     const allItems = [...items.sales_items];
 
     for (let i = 2; i <= items.meta.pagination.all_pages; i++) {
-      const nextPhotos = await this.fetchItems({ ...args, page: i });
+      const nextPhotos = await this.fetchItems({
+        organizationId: this.organizationId,
+        salesId,
+        groupId,
+        eventId,
+        page: i,
+      });
       allItems.push(...nextPhotos.sales_items);
     }
 
     return allItems.map((i) => i.picture);
   }
 
-  async addCart({ organizationId, salesId, photoId }: AddCartArgs) {
+  async addCart(photoIds: number[]): Promise<any[]> {
+    const authResult = await this.getAuthResult();
+    const salesId = Number(authResult.salesId);
+
+    return Promise.all(
+      photoIds.map((photoId) =>
+        this.addCartSingle({
+          organizationId: this.organizationId,
+          salesId,
+          photoId,
+        }),
+      ),
+    );
+  }
+
+  private async addCartSingle({
+    organizationId,
+    salesId,
+    photoId,
+  }: AddCartArgs) {
     const authResult = await this.getAuthResult();
     const token = authResult.lookmeeToken;
     const response = await fetchRetry(

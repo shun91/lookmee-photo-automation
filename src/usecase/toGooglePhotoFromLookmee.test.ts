@@ -18,15 +18,9 @@ describe("toGooglePhotoFromLookmee", () => {
   >;
   let mockFetchAllPhotos: ReturnType<
     typeof mock.fn<
-      (args: {
-        organizationId: number;
-        salesId: number;
-        groupId: number;
-        eventId?: number;
-      }) => Promise<Photo[]>
+      (args: { groupId: number; eventId?: number }) => Promise<Photo[]>
     >
   >;
-  let mockGetSalesId: ReturnType<typeof mock.fn<() => Promise<number>>>;
 
   beforeEach(() => {
     originalEnv = process.env.LOOKMEE_ORGANIZATION_ID;
@@ -44,12 +38,7 @@ describe("toGooglePhotoFromLookmee", () => {
     } as unknown as GooglePhotoClient;
 
     mockFetchAllPhotos = mock.fn(
-      async (args: {
-        organizationId: number;
-        salesId: number;
-        groupId: number;
-        eventId?: number;
-      }) => [
+      async (args: { groupId: number; eventId?: number }) => [
         {
           id: 1,
           thumbnail_big_url: "https://example.com/photo1.jpg",
@@ -68,12 +57,11 @@ describe("toGooglePhotoFromLookmee", () => {
       ],
     );
 
-    mockGetSalesId = mock.fn(async () => 12345);
-
     mockLookmeeClient = {
       fetchAllPhotos: mockFetchAllPhotos,
-      addCart: async () => {},
-      getSalesId: mockGetSalesId,
+      addCart: async () => [],
+      getSalesId: async () => 12345,
+      getOrganizationId: async () => 123,
     } satisfies LookmeeClient;
   });
 
@@ -126,13 +114,13 @@ describe("toGooglePhotoFromLookmee", () => {
     assert.equal(result.totalPhotos, 6);
     assert.equal(result.uploadedPhotos, 6);
 
-    // salesId取得が呼ばれることを確認
-    assert.equal(mockGetSalesId.mock.callCount(), 1);
-
-    // Lookmee API が自動取得されたsalesIdで呼ばれることを確認
+    // Lookmee API が2回呼ばれることを確認
     assert.equal(mockFetchAllPhotos.mock.callCount(), 2);
+
+    // fetchAllPhotosの引数がgroupIdとeventIdのみであることを確認
     const fetchCall = mockFetchAllPhotos.mock.calls[0];
-    assert.equal(fetchCall.arguments[0].salesId, 12345); // 自動取得されたsalesId
+    assert.equal(fetchCall.arguments[0].groupId, 67890);
+    assert.equal(fetchCall.arguments[0].eventId, 1);
   });
 
   test("正常系: uploadCountを指定した場合制限される", async () => {
@@ -207,11 +195,14 @@ describe("toGooglePhotoFromLookmee", () => {
     );
   });
 
-  test("異常系: salesId自動取得に失敗した場合", async () => {
+  test("異常系: LookmeeClientでエラーが発生した場合", async () => {
     const mockFailClient = {
-      fetchAllPhotos: mockFetchAllPhotos,
-      addCart: async () => {},
-      getSalesId: mock.fn(async () => 0), // 0を返してsalesIdエラーを引き起こす
+      fetchAllPhotos: mock.fn(async () => {
+        throw new Error("Failed to fetch photos");
+      }),
+      addCart: async () => [],
+      getSalesId: async () => 12345,
+      getOrganizationId: async () => 123,
     } satisfies LookmeeClient;
 
     await assert.rejects(
@@ -225,7 +216,7 @@ describe("toGooglePhotoFromLookmee", () => {
           mockFailClient,
         );
       },
-      { message: "salesId could not be determined" },
+      { message: "Failed to fetch photos" },
     );
   });
 
@@ -234,8 +225,9 @@ describe("toGooglePhotoFromLookmee", () => {
       fetchAllPhotos: mock.fn(async () => {
         throw new Error("Lookmee API error");
       }),
-      addCart: async () => {},
+      addCart: async () => [],
       getSalesId: async () => 67890,
+      getOrganizationId: async () => 123,
     } satisfies LookmeeClient;
 
     await assert.rejects(
@@ -311,8 +303,9 @@ describe("toGooglePhotoFromLookmee", () => {
   test("境界値テスト: 写真が0枚の場合", async () => {
     const mockEmptyLookmeeClient = {
       fetchAllPhotos: mock.fn(async () => []),
-      addCart: async () => {},
+      addCart: async () => [],
       getSalesId: async () => 67890,
+      getOrganizationId: async () => 123,
     } satisfies LookmeeClient;
 
     const result = await toGooglePhotoFromLookmee(

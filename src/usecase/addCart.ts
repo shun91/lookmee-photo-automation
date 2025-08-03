@@ -1,16 +1,12 @@
 import { LookmeeClient, LookmeeClientImpl } from "../gateway/LookmeeClient";
 
-// 環境変数から組織IDを取得
-const getOrganizationId = () => Number(process.env.LOOKMEE_ORGANIZATION_ID);
-
 export interface AddCartParams {
-  organizationId: number;
-  salesId?: number;
   photoIds: number[];
 }
 
 export interface AddCartResult {
   salesId: number;
+  organizationId: number;
   photoIds: number[];
   addedCount: number;
   results: any[];
@@ -27,34 +23,21 @@ export const addCart = async (
   params: AddCartParams,
   clientInstance: LookmeeClient,
 ): Promise<AddCartResult> => {
-  const { organizationId, photoIds } = params;
-  let { salesId } = params;
+  const { photoIds } = params;
 
-  if (!organizationId || !photoIds.length) {
-    throw new Error("organizationId and photoIds are required");
+  if (!photoIds.length) {
+    throw new Error("photoIds are required");
   }
 
-  // salesIdが未指定の場合は自動取得
-  if (!salesId) {
-    salesId = await clientInstance.getSalesId();
-  }
+  const results = await clientInstance.addCart(photoIds);
 
-  if (!salesId) {
-    throw new Error("salesId could not be determined");
-  }
-
-  const results = await Promise.all(
-    photoIds.map((photoId) =>
-      clientInstance.addCart({
-        organizationId,
-        salesId: salesId!, // この時点でsalesIdは必ず数値
-        photoId,
-      }),
-    ),
-  );
+  // 結果表示用にsalesIdとorganizationIdを取得
+  const salesId = await clientInstance.getSalesId();
+  const organizationId = await clientInstance.getOrganizationId();
 
   return {
     salesId,
+    organizationId,
     photoIds,
     addedCount: results.length,
     results,
@@ -100,24 +83,17 @@ const main = async () => {
     process.exit(1);
   }
 
-  const organizationId = getOrganizationId();
-  if (!organizationId) {
-    console.error("LOOKMEE_ORGANIZATION_ID environment variable is required");
-    process.exit(1);
-  }
-
-  const lookmeeClient = new LookmeeClientImpl();
+  const lookmeeClient = salesId
+    ? new LookmeeClientImpl(undefined, salesId.toString())
+    : new LookmeeClientImpl();
   try {
-    const result = await addCart(
-      { organizationId, salesId, photoIds },
-      lookmeeClient,
-    );
+    const result = await addCart({ photoIds }, lookmeeClient);
     console.info(result);
 
     // カート画面のURLを表示
     console.info("\nカート画面を開いて購入を完了してください。");
     console.info(
-      `https://photo.lookmee.jp/site/organizations/${organizationId}/sales_managements/${result.salesId}/cart`,
+      `https://photo.lookmee.jp/site/organizations/${result.organizationId}/sales_managements/${result.salesId}/cart`,
     );
   } catch (error) {
     console.error("Error:", error);

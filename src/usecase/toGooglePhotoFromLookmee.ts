@@ -4,8 +4,6 @@ import {
   GooglePhotoClientImpl,
 } from "../gateway/GooglePhotoClient";
 
-const organizationId = Number(process.env.LOOKMEE_ORGANIZATION_ID);
-
 const CLIENT_ID = process.env.GOOGLE_CLINET_ID ?? "";
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? "";
@@ -34,21 +32,9 @@ export const toGooglePhotoFromLookmee = async (
     throw new Error("groupId is required");
   }
 
-  // salesIdが未指定の場合は自動取得
-  let resolvedSalesId = salesId;
-  if (!resolvedSalesId) {
-    resolvedSalesId = await lookmeeClient.getSalesId();
-  }
-
-  if (!resolvedSalesId) {
-    throw new Error("salesId could not be determined");
-  }
-
   // すべての写真を取得
   const promises = eventIds.map((eventId) => {
     return lookmeeClient.fetchAllPhotos({
-      organizationId,
-      salesId: resolvedSalesId!, // この時点でresolvedSalesIdは必ず数値
       groupId,
       eventId,
     });
@@ -148,7 +134,9 @@ const main = async () => {
     refreshToken: REFRESH_TOKEN,
   });
 
-  const lookmeeClient = new LookmeeClientImpl();
+  const lookmeeClient = salesId
+    ? new LookmeeClientImpl(undefined, salesId.toString())
+    : new LookmeeClientImpl();
 
   try {
     await toGooglePhotoFromLookmee(

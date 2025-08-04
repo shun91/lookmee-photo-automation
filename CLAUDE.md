@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 #### Google Photo API 関連
 
 ```
-GOOGLE_CLINET_ID
+GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI
 GOOGLE_REFRESH_TOKEN
@@ -26,39 +26,63 @@ LOOKMEE_EMAIL
 LOOKMEE_PASSWORD
 ```
 
+#### makeDiffAlbum 機能関連（オプション）
+
+```
+DEFAULT_EXCLUDE_ALBUM
+```
+
 ### 主要スクリプトの実行
 
 #### Google Photo のリフレッシュトークン取得
 
 ```bash
-ts-node src/usecase/genGoogleRefreshToken.ts
+tsx src/usecase/genGoogleRefreshToken.ts
 ```
 
-#### Lookmee の認証情報（セッションクッキーとsalesId）取得
+#### Lookmee の認証情報（セッションクッキーと salesId）取得
 
 ```bash
-ts-node src/gateway/getLookmeeAuth.ts
+tsx src/gateway/getLookmeeAuth.ts
 ```
 
 #### Lookmee から Google Photo にアップロード
 
 ```bash
-# コマンド例: ts-node src/usecase/toGooglePhotoFromLookmee.ts [groupId] [eventIds] [uploadCount] [salesId]
+# コマンド例: tsx src/usecase/toGooglePhotoFromLookmee.ts [groupId] [eventIds] [uploadCount] [salesId]
 # salesIdは任意（未指定の場合は自動取得）
-ts-node src/usecase/toGooglePhotoFromLookmee.ts 1 6276436,6276437 10
-ts-node src/usecase/toGooglePhotoFromLookmee.ts 1 6276436,6276437 10 173128
-npm run toGooglePhotoFromLookmee -- 1 6276436,6276437 10
-npm run toGooglePhotoFromLookmee -- 1 6276436,6276437 10 173128
+tsx src/usecase/toGooglePhotoFromLookmee.ts 1 6276436,6276437 10
+tsx src/usecase/toGooglePhotoFromLookmee.ts 1 6276436,6276437 10 173128
+yarn toGooglePhotoFromLookmee 1 6276436,6276437 10
+yarn toGooglePhotoFromLookmee 1 6276436,6276437 10 173128
+```
+
+#### Lookmee から Google Photo に一括アップロード
+
+```bash
+tsx src/usecase/batchToGooglePhotoFromLookmee.ts
+yarn batchToGooglePhotoFromLookmee
 ```
 
 #### Lookmee のカートに写真を追加
 
 ```bash
-# コマンド例: ts-node src/usecase/addCart.ts [photoIds] [salesId]
-ts-node src/usecase/addCart.ts 1,2,3
-ts-node src/usecase/addCart.ts 1,2,3 173128
-npm run addCart -- 1,2,3
-npm run addCart -- 1,2,3 173128
+# コマンド例: tsx src/usecase/addCart.ts [photoIds] [salesId]
+tsx src/usecase/addCart.ts 1,2,3
+tsx src/usecase/addCart.ts 1,2,3 173128
+yarn addCart 1,2,3
+yarn addCart 1,2,3 173128
+```
+
+#### アルバム差分の作成
+
+```bash
+# コマンド例: tsx src/usecase/makeDiffAlbum.ts [アルバムAのタイトル] [アルバムBのタイトル]
+# アルバムBは任意（未指定の場合は環境変数DEFAULT_EXCLUDE_ALBUMから取得）
+tsx src/usecase/makeDiffAlbum.ts "2024年度運動会写真" "購入済み写真"
+tsx src/usecase/makeDiffAlbum.ts "2024年度運動会写真"
+yarn makeDiffAlbum "2024年度運動会写真" "購入済み写真"
+yarn makeDiffAlbum "2024年度運動会写真"
 ```
 
 ## コードアーキテクチャ
@@ -70,12 +94,14 @@ src/
 ├── gateway/                  # APIクライアントの実装
 │   ├── GooglePhotoClient.ts  # Google Photo API クライアント
 │   ├── LookmeeClient.ts      # Lookmee API クライアント
-│   └── fetchRetry.ts         # リトライ機能付きのフェッチユーティリティ
-├── usecase/                  # ユースケース実装
-│   ├── addCart.ts            # Lookmeeのカートに写真を追加
-│   ├── genGoogleRefreshToken.ts  # GoogleのリフレッシュトークンXを生成
-│   └── toGooglePhotoFromLookmee.ts  # LookmeeからGoogle Photoへ写真をコピー
-└── getLookmeeCookie.ts       # PlaywrightでLookmeeのセッションクッキーを取得
+│   ├── fetchRetry.ts         # リトライ機能付きのフェッチユーティリティ
+│   └── getLookmeeAuth.ts     # PlaywrightでLookmeeの認証情報を取得
+└── usecase/                  # ユースケース実装
+    ├── addCart.ts            # Lookmeeのカートに写真を追加
+    ├── batchToGooglePhotoFromLookmee.ts  # 一括でLookmeeからGoogle Photoへ写真をコピー
+    ├── genGoogleRefreshToken.ts  # GoogleのリフレッシュトークンXを生成
+    ├── makeDiffAlbum.ts      # Googleフォトのアルバム差分を作成
+    └── toGooglePhotoFromLookmee.ts  # LookmeeからGoogle Photoへ写真をコピー
 ```
 
 ### 主要コンポーネント
@@ -96,28 +122,37 @@ Google Photos API にアクセスするためのクライアント。
 
 #### 3. ユースケース
 
-主に 2 つの機能を提供：
+主に以下の機能を提供：
 
-- Lookmee Photo から Google Photo へ写真をアップロード
+- Lookmee Photo から Google Photo へ写真をアップロード（単発・一括）
 - Lookmee Photo のカートに写真を追加
+- Google Photo アルバムの差分作成
 
 #### 4. 認証ヘルパー
 
 - Google API のリフレッシュトークン取得
-- Lookmee の認証情報（セッションクッキーとsalesId）取得（Playwright 使用）
+- Lookmee の認証情報（セッションクッキーと salesId）取得（Playwright 使用）
 
 ### データフロー
 
 1. **Lookmee から写真を取得**：
+
    - LookmeeClient を使用して API 経由で写真データを取得
    - organizationId、salesId、groupId、eventId などのパラメータで写真を特定
 
 2. **Google Photo へのアップロード**：
+
    - GooglePhotoClient を使用して新しいアルバムを作成
    - バッチ処理（最大 50 枚/バッチ）で写真をアップロード
 
 3. **Lookmee のカートへ追加**：
+
    - 指定された写真 ID を使用してカートへ追加
+
+4. **Google Photo アルバム差分作成**：
+   - 2 つのアルバムのメディアアイテム ID を取得
+   - 差分を計算（アルバム A に含まれ、アルバム B に含まれないアイテム）
+   - 新しいアルバムを作成し、差分のアイテムを追加
 
 ## テスト戦略とルール
 

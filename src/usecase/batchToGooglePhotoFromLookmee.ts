@@ -40,8 +40,8 @@ const main = async () => {
   const groupIds = groupIdsArg
     ? groupIdsArg.split(",")
     : envGroupIds
-      ? envGroupIds.split(",")
-      : [];
+    ? envGroupIds.split(",")
+    : [];
 
   // eventIdsとuploadCountはそのまま渡す
   const eventIds = process.argv[4] || "";
@@ -79,7 +79,7 @@ const main = async () => {
       args.push(uploadCount);
     }
 
-    // tsx（またはts-node）でスクリプトを実行
+    // tsxでスクリプトを実行
     await new Promise((resolve, reject) => {
       const child = spawn("tsx", args, {
         stdio: "inherit",

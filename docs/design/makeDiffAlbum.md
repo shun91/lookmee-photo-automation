@@ -137,7 +137,7 @@ CLI → GooglePhotoClient.listAlbums()      ┐
 | 1   | `GooglePhotoClient` に **listAlbums / findAlbumIdByTitle / fetchAllMediaIds / batchAddMediaItems** を追加 | -    | TypeScript 単体テスト通過               |
 | 2   | `domain/photoDiff.ts` 実装 & テスト                                                                       | -    | 差集合ロジックのテスト                  |
 | 3   | `usecase/makeDiffAlbum.ts` 実装                                                                           | -    | `yarn makeDiffAlbum` で最小ケースが動く |
-| 4   | `package.json` に script 追加<br>`` json `"makeDiffAlbum": "ts-node src/usecase/makeDiffAlbum.ts" ``      | -    | `yarn makeDiffAlbum ...` で起動         |
+| 4   | `package.json` に script 追加<br>`` json `"makeDiffAlbum": "tsx src/usecase/makeDiffAlbum.ts" ``          | -    | `yarn makeDiffAlbum ...` で起動         |
 | 5   | README 更新（使い方追記）                                                                                 | -    | PR に記載                               |
 | 6   | 動作確認：テスト用アルバムを API で作成し、写真を手動で重複配置しないケース／重複ありケースを検証         | -    | コンソール出力が要件どおり              |
 

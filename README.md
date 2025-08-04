@@ -12,7 +12,7 @@ Lookmee Photo における写真の選択や購入を効率化するためのス
 取得した認証情報は ↓ の環境変数にセットしてください。
 
 ```
-GOOGLE_CLINET_ID
+GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI
 ```
@@ -45,13 +45,13 @@ LOOKMEE_ORGANIZATION_ID
 
 ### makeDiffAlbum のための設定（オプション）
 
-差分作成機能（makeDiffAlbum）でよく使用する除外アルバム（アルバムB）を環境変数に設定しておくことで、コマンドライン引数の入力を省略できます。
+差分作成機能（makeDiffAlbum）でよく使用する除外アルバム（アルバム B）を環境変数に設定しておくことで、コマンドライン引数の入力を省略できます。
 
 ```
 DEFAULT_EXCLUDE_ALBUM="購入済み写真"
 ```
 
-この環境変数を設定すると、コマンド実行時にアルバムBの指定を省略できます：
+この環境変数を設定すると、コマンド実行時にアルバム B の指定を省略できます：
 
 ```bash
 # アルバムBを環境変数から取得
@@ -65,8 +65,18 @@ yarn makeDiffAlbum "2024年度運動会写真"
 toGooglePhotoFromLookmee.ts を実行します。詳細はソースコード内の説明を確認してください。
 
 ```bash
-# コマンド例: yarn toGooglePhotoFromLookmee [salesId] [groupId] [eventIds] [uploadCount]
-yarn toGooglePhotoFromLookmee 173128 1 6276436,6276437 10
+# コマンド例: yarn toGooglePhotoFromLookmee [groupId] [eventIds] [uploadCount] [salesId]
+yarn toGooglePhotoFromLookmee 1 6276436,6276437 10
+yarn toGooglePhotoFromLookmee 1 6276436,6276437 10 173128
+```
+
+### Lookmee から Google Photo に一括アップロード
+
+複数のイベントを一括でアップロードできます。
+
+```bash
+# コマンド例: yarn batchToGooglePhotoFromLookmee
+yarn batchToGooglePhotoFromLookmee
 ```
 
 ### Lookmee のカートへの追加
@@ -74,13 +84,14 @@ yarn toGooglePhotoFromLookmee 173128 1 6276436,6276437 10
 addCart.ts を実行します。詳細はソースコード内の説明を確認してください。
 
 ```bash
-# コマンド例: yarn addCart [salesId] [photoIds]
-yarn addCart 173128 1,2,3
+# コマンド例: yarn addCart [photoIds] [salesId]
+yarn addCart 1,2,3
+yarn addCart 1,2,3 173128
 ```
 
 ### アルバム差分の作成
 
-2つのGoogleフォトアルバムの差分を新しいアルバムに追加します。「アルバムAに含まれる、かつアルバムBに含まれないメディアアイテム」のみを対象とします。
+2 つの Google フォトアルバムの差分を新しいアルバムに追加します。「アルバム A に含まれる、かつアルバム B に含まれないメディアアイテム」のみを対象とします。
 
 ```bash
 # コマンド例: yarn makeDiffAlbum "アルバムAのタイトル" ["アルバムBのタイトル"]
@@ -90,16 +101,16 @@ yarn makeDiffAlbum "2024年度運動会写真" "購入済み写真"
 yarn makeDiffAlbum "2024年度運動会写真"
 ```
 
-※出力アルバムは毎回新規作成され、タイトルは「アルバムA - diff (日付 時刻)」の形式で自動生成されます。
+※出力アルバムは毎回新規作成され、タイトルは「アルバム A - diff (日付 時刻)」の形式で自動生成されます。
 
-#### makeDiffAlbumの特徴
+#### makeDiffAlbum の特徴
 
 - 毎回新しいアルバム作成：日時を含むタイトルで自動的に新規アルバムを作成
-- 除外アルバム（アルバムB）の環境変数設定：よく使うアルバムを環境変数に設定可能
-- インメモリキャッシュ：アルバム一覧を60秒間キャッシュし、パフォーマンス向上
-- 50件ずつのバッチ処理：APIの制限内で効率的に処理
+- 除外アルバム（アルバム B）の環境変数設定：よく使うアルバムを環境変数に設定可能
+- インメモリキャッシュ：アルバム一覧を 60 秒間キャッシュし、パフォーマンス向上
+- 50 件ずつのバッチ処理：API の制限内で効率的に処理
 - ページネーション完全対応：どんな枚数のアルバムでも対応
-- アプリ作成アルバム対応：2025-04-01以降のGoogle APIスコープ変更に準拠
-- エラーハンドリング：5xx/429エラーに対する自動リトライ機能
+- アプリ作成アルバム対応：2025-04-01 以降の Google API スコープ変更に準拠
+- エラーハンドリング：5xx/429 エラーに対する自動リトライ機能
 
-この機能を利用して、Lookmeeからアップロードした写真と既に購入した写真の差分を抽出し、未購入写真だけを表示するなどの使い方ができます。
+この機能を利用して、Lookmee からアップロードした写真と既に購入した写真の差分を抽出し、未購入写真だけを表示するなどの使い方ができます。

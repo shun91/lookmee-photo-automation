@@ -17,7 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * - LOOKMEE_GROUP_IDS（任意）: カンマ区切りのgroupId（例: "1,2,3"）
  *
  * また、以下の値を標準入力から受け取ります。
- * - salesId: LookmeeのsalesId
+ * - salesId: LookmeeのsalesId（任意：未指定の場合は自動取得）
  * - groupIds: カンマ区切りのgroupId（例: "1,2,3"）
  * - eventIds: LookmeeのeventId。カンマ区切りで複数指定可（任意：特定のイベントを指定する場合）
  * - uploadCount: アップロードする写真の枚数（任意）
@@ -30,6 +30,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  *
  * Example:
  *   node src/usecase/batchToGooglePhotoFromLookmee.ts 173128 1,2,3 6276436,6276437 10
+ *   node src/usecase/batchToGooglePhotoFromLookmee.ts "" 1,2,3  （salesIdを自動取得）
  */
 const main = async () => {
   // 標準入力からsalesIdとgroupIdsとeventIdsを受け取る
@@ -40,14 +41,14 @@ const main = async () => {
   const groupIds = groupIdsArg
     ? groupIdsArg.split(",")
     : envGroupIds
-    ? envGroupIds.split(",")
-    : [];
+      ? envGroupIds.split(",")
+      : [];
 
   // eventIdsとuploadCountはそのまま渡す
   const eventIds = process.argv[4] || "";
   const uploadCount = process.argv[5];
 
-  if (!salesId || groupIds.length === 0) {
+  if (groupIds.length === 0) {
     console.error(
       "Usage: node src/usecase/batchToGooglePhotoFromLookmee.ts [salesId] [groupIds] [eventIds] [uploadCount]",
     );
@@ -57,7 +58,7 @@ const main = async () => {
     process.exit(1);
   }
 
-  console.info(`salesId: ${salesId}`);
+  console.info(`salesId: ${salesId || "自動取得"}`);
   console.info(`groupIds: ${groupIds.join(", ")}`);
   console.info(`eventIds: ${eventIds}`);
   console.info(`uploadCount: ${uploadCount || "全て"}`);
@@ -67,7 +68,7 @@ const main = async () => {
     console.info(`\n-------- グループID: ${groupId}の処理を開始 --------`);
 
     const scriptPath = path.resolve(__dirname, "toGooglePhotoFromLookmee.ts");
-    const args = [scriptPath, salesId, groupId];
+    const args = [scriptPath, groupId];
 
     // eventIdsが指定されていれば追加
     if (eventIds) {
@@ -77,6 +78,11 @@ const main = async () => {
     // uploadCountが指定されていれば追加
     if (uploadCount) {
       args.push(uploadCount);
+    }
+
+    // salesIdが指定されていれば追加
+    if (salesId) {
+      args.push(salesId);
     }
 
     // tsxでスクリプトを実行

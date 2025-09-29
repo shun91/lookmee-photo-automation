@@ -248,7 +248,9 @@ export class LookmeeClientImpl implements LookmeeClient {
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to add cart: ${response.statusText}`);
+      throw new Error(
+        `Failed to add cart: ${response.statusText} (photoId: ${photoId})`,
+      );
     }
 
     const cart = await response.json();
